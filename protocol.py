@@ -36,8 +36,8 @@ class Protocol:
             print('before receiving 1 byte')
             len_word += my_client.recv(1).decode()
             print('received 1 byte from socket')
-            if len_word is None:
-                return False, 'Error'
+            if not len_word:
+                return False, 'empty'
             print(f"in length: {len_word}")
 
         if len_word.isnumeric():
@@ -66,5 +66,7 @@ class Protocol:
                 return True, data
             except json.JSONDecodeError as e:
                 print("JSON decode error:", e, data)
+        elif data[1] == 'empty':  # data is empty
+            return False, 'empty'
         else:
             return False, 'Error'
