@@ -3,20 +3,32 @@ import select
 from protocol import Protocol
 
 """
-ESP32 mac addresses:
-- 30:30:F9:77:0E:42
+Central device bluetooth mac address:
+- 1C:9D:C2:35:A8:52
 """
 
 
 class Manager:
     def __init__(self):
-        print('hello world')
+        # ServerCommunication
+        self.peripheral_device_count = None
+        self.server_object = None
+        self.Model = None
+
+    def start(self):
+        # Model
+        #TODO update the Model format to database/file
+        self.Model = ['30:30:F9:77:06:0C', '30:30:F9:77:0E:40', '30:30:F9:77:0B:C8']
+        # ServerCommunication
+        self.peripheral_device_count = 1  # amount of peripheral devices required
+        self.server_object = ServerCommunication(self.peripheral_device_count, self.Model)
+        self.server_object.start()
 
 
 class ServerCommunication:
-    def __init__(self, peripheral_count):
+    def __init__(self, peripheral_count, model):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # create the server socket
-        self.ip_addr = '172.16.1.118'
+        self.ip_addr = '10.100.102.31'
         self.port = 4500
 
         self.peripheral_device_count = peripheral_count  # amount of peripheral devices required
@@ -27,6 +39,9 @@ class ServerCommunication:
         self.connected_peripherals = 0
 
         self.central_device_mac = '1C:9D:C2:35:A8:52'
+
+        # Model
+        self.model = model
 
     def receive_error(self, sock, error):  # if response[0] is false, handle it here
         if error == 'empty':  # socket disconnected
@@ -44,13 +59,14 @@ class ServerCommunication:
         self.verification_list.append(c_s)
 
         # start verification process
-        query = Protocol.create_msg('what is your job')
+        query = Protocol.create_msg('what is your mac address')
         c_s.send(query)
 
     def verify_connected_sockets(self, sock):
         response = Protocol.get_msg(sock)
         if response[0]:
-            if response[1] == 'peripheral device':  # if socket is a peripheral device
+            if response[1] in self.model:  # if mac address is in peripheral_device mac addresses list, allow connection
+                #TODO Make sure that the same mac address isnt already connected, and add the mac address to peripheral devices list/dictionary
                 print(f'authenticated {self.sockets_dict[sock]}')
                 # handle lists and dictionaries
                 self.verification_list.remove(sock)
@@ -122,11 +138,9 @@ class ServerCommunication:
 
 
 def main():
-    # ServerCommunication
-
-    peripheral_device_count = 1  # amount of peripheral devices required
-    server_object = ServerCommunication(peripheral_device_count)
-    server_object.start()
+    # Manager
+    manager = Manager()
+    manager.start()
 
 
 if __name__ == '__main__':

@@ -7,6 +7,7 @@ import ujson
 import _thread
 import sys
 import gc
+import ubinascii
 
 """
     This is a client script is part of a client server dialogue, where the client is the esp32, and the server is a computer running python.
@@ -84,7 +85,17 @@ class ConnectToWifi:
         - this class connects an esp32 to a wifi.
         - uses network library, and time.
     """
-    
+
+    @staticmethod
+    def get_mac_address(wifi):
+        # Get the MAC address
+        mac = wifi.config('mac')
+
+        # Format the MAC address
+        mac_str = ubinascii.hexlify(mac, ':').decode().upper()
+        
+        return mac_str
+
     @staticmethod
     def start(ssid, password):
         # create instance of station
@@ -101,7 +112,7 @@ class ConnectToWifi:
                 if sta_if.isconnected():# check if the connection is established
                     # check ip address
                     print(f"connected to {ssid}.\n{sta_if.ifconfig()}")  # (<IP address>, <subnet mask>, <Gateway>, <DNS>)
-                    return
+                    return ConnectToWifi.get_mac_address(sta_if)
 
                 else:
                     print('not able to connect to network, trying again...')
@@ -109,7 +120,7 @@ class ConnectToWifi:
             except Exception as e:
                 if sta_if.isconnected():
                     print(f"already connected to: {ssid}. \n{sta_if.ifconfig()}")
-                    return
+                    return ConnectToWifi.get_mac_address(sta_if)
                 else:
                     print(f'error: {e}')
         
@@ -177,8 +188,9 @@ class BleScanner:
 class Networking:
     def __init__(self, esp32_peripheral, rate):
         self.port = 4500
-        self.server_ip = '172.16.1.118'
+        self.server_ip = '10.100.102.31'
         self.client_socket = None
+        self.mac_address = None
         
         self.scanner = esp32_peripheral
         self.rate = rate
@@ -215,16 +227,19 @@ class Networking:
             self.client_socket.send(data)
             print('sent')
             #print(f'sent: {back}')
-           
-    def start(self):
+
+    def start(self, mac_address):
+        self.mac_address = mac_address
+
         # socket setup
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.connect((self.server_ip, self.port))
         print('connected')
         
         data = Protocol.get_msg(self.client_socket)
-        print(data[1])
-        verif = Protocol.create_msg('peripheral device') # send the server verification message
+        print(data[1])  # print verification question
+        print(f'sending: {self.mac_address} as answer')
+        verif = Protocol.create_msg(self.mac_address) # send the server verification message
         self.client_socket.send(verif)
         data = Protocol.get_msg(self.client_socket)
         if data[0]:  # if the server sent 'start'
@@ -240,34 +255,33 @@ class Networking:
         
         
 class CoordinatorClass:  # main class, that manages everything
-    def __init__(self, ssid, password, client):
-        self.esp32_client = client
-        self.ssid = ssid
-        self.password = password
+    def __init__(self):
+        self.esp32_client = None
+        self.ssid = None
+        self.password = None
         
     def start(self):
-        ConnectToWifi.start(self.ssid, self.password)
-        self.esp32_client.start()
+        #wifi info
+        #self.ssid = 'Adassim'
+        #self.password = '20406080'
+        self.ssid = 'Needham'
+        self.password = 'gr2Hoyer'
+
+        #BleScanner class
+        ms_scan = 10000  # (ms) - Scan for 10s (at 100% duty cycle)
+        esp32_scanner = BleScanner(ms_scan)
+
+        #Networking class
+        rate = 4
+        self.esp32_client = Networking(esp32_scanner, rate)
+
+        mac_address = ConnectToWifi.start(self.ssid, self.password)
+        self.esp32_client.start(mac_address)
         
     
 def main():
-    # wifi info
-    ssid = 'Adassim'
-    password = '20406080'
-    #ssid = 'Needham'
-    #password = 'gr2Hoyer'
-    
-    # test BleScanner class
-    ms_scan = 10000  # (ms) - Scan for 10s (at 100% duty cycle)
-    # central_devices_list = {"30:30:F9:77:0E:42": -31}
-    esp32_peripheral = BleScanner(ms_scan)
-    
-    # test Networking class
-    rate = 4
-    esp32_client = Networking(esp32_peripheral, rate)
-    
     # create Client object
-    coordinator = CoordinatorClass(ssid, password, esp32_client)
+    coordinator = CoordinatorClass()
     coordinator.start()
     
 
