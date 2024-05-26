@@ -160,3 +160,8 @@ cython_debug/
 #.idea/
 
 test.py
+trilateration.py
+calculate_distance.py
+/GUI_testing.py
+resized_model.json
+Models/test_model.json
