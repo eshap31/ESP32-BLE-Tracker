@@ -20,38 +20,58 @@ class Manager:
         self.model_address = None
         self.Model = None
 
+        # GUI
+        self.root = CTk()
+
+        # RssiData
+        self.rssi_data_obj = None
+
+        # GUI Manager
+        """
+        - holds all the functions that update the gui
+        - Will be inherited to the ModelPlugNPlay, and the GUI class
+        """
+
     def start(self):
         # Model
-        self.model_address = 'Models/test_model.json'
-        self.Model = ModelPlugNPlay(self.model_address)
-        self.Model.start()
+        #self.model_address = 'Models/test_model.json'
+        self.model_address = 'Models/model_2.json'
+        self.Model = ModelPlugNPlay(self.model_address, self.root)
+        #self.Model.start()
+
+        # RssiData
+        self.rssi_data_obj = RssiData()
 
         # ServerCommunication
         self.peripheral_device_count = 1  # amount of peripheral devices required
-        self.server_object = ServerCommunication(self.peripheral_device_count, self.Model.mac_list)
+        self.server_object = ServerCommunication(self.peripheral_device_count, self.Model.mac_list, self.rssi_data_obj)
         self.server_object.start()
 
 
 class ServerCommunication:
-    def __init__(self, peripheral_count, model):
+    def __init__(self, peripheral_count, model, rssi_data_obj):
         # socket
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # create the server socket
-        self.ip_addr = '10.100.102.31'
+        self.ip_addr = '172.16.1.118'
         self.port = 4500
 
         # Data structures
         self.peripheral_device_count = peripheral_count  # amount of peripheral devices required
         #self.peripheral_devices = []  # list that holds all the peripheral sockets
-        self.peripheral_devices = {}  # list that holds all the peripheral sockets and their mac addresses
+        self.peripheral_devices = {}  # dictionary that holds all the peripheral sockets and their mac addresses
         self.sockets_dict = {self.server_socket: self.ip_addr}  # holds all the sockets, for the select
         self.verification_list = []  # list of sockets that need to be verified
         self.start_list = []
         self.connected_peripherals = 0
+        self.peripheral_macs = ['30:30:F9:77:0B:C8']
 
         self.central_device_mac = '1C:9D:C2:35:A8:52'
 
         # Model
         self.model = model
+
+        # RssiData
+        self.rssi_data_obj = rssi_data_obj
 
     def receive_error(self, sock, error):  # if response[0] is false, handle it here
         if error == 'empty':  # socket disconnected
@@ -78,7 +98,8 @@ class ServerCommunication:
     def verify_connected_sockets(self, sock):
         response = Protocol.get_msg(sock)
         if response[0]:
-            if response[1] in self.model:  # if mac address is in peripheral_device mac addresses list, allow connection
+            #if response[1] in self.model:  # if mac address is in peripheral_device mac addresses list, allow connection
+            if response[1] in self.peripheral_macs:
                 #TODO Make sure that the same mac address isn't already connected, and add the mac address to peripheral devices list/dictionary
                 print(f'authenticated {self.sockets_dict[sock]}')
                 # handle lists and dictionaries
@@ -99,7 +120,7 @@ class ServerCommunication:
         response = Protocol.get_serialized_data(sock)  # receive data from socket
         if response[0]:
             print(f'got data from {self.sockets_dict[sock]}\n{response[1]}\n')
-            if self.connected_peripherals >= 3:
+            if self.connected_peripherals >= 1:  # TODO change to 3, when done with code testing
                 print('doing things with data')
                 self.get_central_device_data(response[1], sock)
             else:
@@ -109,10 +130,11 @@ class ServerCommunication:
 
     def get_central_device_data(self, data_dictionary, sock):  # Gets central device rssi
         if self.central_device_mac in data_dictionary.keys():  # check if central device was picked up in scan
-            central_rssi = data_dictionary[self.central_device_mac]
-            print(f'most recent rssi recorded by {self.peripheral_devices[sock]}: {central_rssi[0]} dbm')
-            #TODO create database that will store each peripheral device mac address, and the most recent rssi captured
-            #TODO add data to the database created
+            central_rssi = data_dictionary[self.central_device_mac][0]
+            print(f'most recent rssi recorded by {self.peripheral_devices[sock]}: {central_rssi} dbm')
+            # add data to self.rssi_data_obj[self.curr] dictionary
+            self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr][self.peripheral_devices[sock]] = central_rssi
+            print(f'\r\ncurr dictionary: {self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr]}\r\n')
         else:
             print('central device not picked up')  # move on
 
@@ -161,7 +183,7 @@ class ServerCommunication:
 
 
 class ModelPlugNPlay:
-    def __init__(self, address):
+    def __init__(self, address, root):
         # model
         self.model_address = address
         self.edges = []
@@ -182,7 +204,7 @@ class ModelPlugNPlay:
 
         # window
         self.window_dimensions = []
-        self.root = CTk()
+        self.root = root
 
     def get_map_size(self):
         """
@@ -394,6 +416,30 @@ class ModelPlugNPlay:
 
         # test it out
         self.root.mainloop()
+
+
+class RssiData:
+    # TODO write a function that every rate amount of time calls the Get_Back function
+    def __init__(self):
+        self.device_whereabouts = [{}, {}]  # list of two dictionaries
+        self.curr = 0  # index of the most updated dictionary of the two in the list - the one where you write to
+        self.back = 1  # index of the second most up-to-date dictionary in the list - the one where you read from
+
+    def Swap_Curr(self):
+        """
+        - makes the curr index, the back index
+        """
+        self.back = self.curr
+        self.curr = (self.curr + 1) % 2
+
+    def Get_Back(self):
+        """
+        - returns the dictionary in the self.back index
+        - returns the dictionary that we want to read from (in order to get data for the gui)
+        """
+        back_dict = self.device_whereabouts[self.back]
+        self.Swap_Curr()
+        return back_dict
 
 
 def main():
