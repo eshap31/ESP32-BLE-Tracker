@@ -1,8 +1,11 @@
 import socket
+import time
+
 import select
 from protocol import Protocol
 import json
 from customtkinter import *
+import threading
 
 """
 Central device bluetooth mac address:
@@ -29,15 +32,15 @@ class Manager:
         # GUI Manager
         """
         - holds all the functions that update the gui
-        - Will be inherited to the ModelPlugNPlay, and the GUI class
+        - Will be passed as an attribute to the ModelPlugNPlay, and the GUI class
         """
 
     def start(self):
         # Model
-        #self.model_address = 'Models/test_model.json'
+        # self.model_address = 'Models/test_model.json'
         self.model_address = 'Models/model_2.json'
         self.Model = ModelPlugNPlay(self.model_address, self.root)
-        #self.Model.start()
+        model_thread = threading.Thread(target=self.Model.start())
 
         # RssiData
         self.rssi_data_obj = RssiData()
@@ -45,7 +48,9 @@ class Manager:
         # ServerCommunication
         self.peripheral_device_count = 1  # amount of peripheral devices required
         self.server_object = ServerCommunication(self.peripheral_device_count, self.Model.mac_list, self.rssi_data_obj)
-        self.server_object.start()
+        server_thread = threading.Thread(target=self.server_object.start())
+
+        # GUI 
 
 
 class ServerCommunication:
@@ -57,13 +62,15 @@ class ServerCommunication:
 
         # Data structures
         self.peripheral_device_count = peripheral_count  # amount of peripheral devices required
-        #self.peripheral_devices = []  # list that holds all the peripheral sockets
+        # self.peripheral_devices = []  # list that holds all the peripheral sockets
         self.peripheral_devices = {}  # dictionary that holds all the peripheral sockets and their mac addresses
         self.sockets_dict = {self.server_socket: self.ip_addr}  # holds all the sockets, for the select
         self.verification_list = []  # list of sockets that need to be verified
         self.start_list = []
         self.connected_peripherals = 0
         self.peripheral_macs = ['30:30:F9:77:0B:C8']
+
+        self.min_peripherals = 3
 
         self.central_device_mac = '1C:9D:C2:35:A8:52'
 
@@ -79,7 +86,7 @@ class ServerCommunication:
             # handle disconnection ...
             del self.sockets_dict[sock]  # remove from dictionary
             del self.peripheral_devices[sock]  # remove from dictionary
-            #TODO handle the rest
+            # TODO handle the rest
         else:  # error with data formatting
             print('error with data formatting, or exception')
             # handle error
@@ -98,9 +105,9 @@ class ServerCommunication:
     def verify_connected_sockets(self, sock):
         response = Protocol.get_msg(sock)
         if response[0]:
-            #if response[1] in self.model:  # if mac address is in peripheral_device mac addresses list, allow connection
+            # if response[1] in self.model:  # if mac address is in peripheral_device mac addresses list, allow connection
             if response[1] in self.peripheral_macs:
-                #TODO Make sure that the same mac address isn't already connected, and add the mac address to peripheral devices list/dictionary
+                # TODO Make sure that the same mac address isn't already connected, and add the mac address to peripheral devices list/dictionary
                 print(f'authenticated {self.sockets_dict[sock]}')
                 # handle lists and dictionaries
                 self.verification_list.remove(sock)
@@ -120,7 +127,7 @@ class ServerCommunication:
         response = Protocol.get_serialized_data(sock)  # receive data from socket
         if response[0]:
             print(f'got data from {self.sockets_dict[sock]}\n{response[1]}\n')
-            if self.connected_peripherals >= 1:  # TODO change to 3, when done with code testing
+            if self.connected_peripherals >= self.min_peripherals:
                 print('doing things with data')
                 self.get_central_device_data(response[1], sock)
             else:
@@ -132,8 +139,10 @@ class ServerCommunication:
         if self.central_device_mac in data_dictionary.keys():  # check if central device was picked up in scan
             central_rssi = data_dictionary[self.central_device_mac][0]
             print(f'most recent rssi recorded by {self.peripheral_devices[sock]}: {central_rssi} dbm')
-            # add data to self.rssi_data_obj[self.curr] dictionary
-            self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr][self.peripheral_devices[sock]] = central_rssi
+
+            # add data to self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr] dictionary
+            self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr][
+                self.peripheral_devices[sock]] = central_rssi
             print(f'\r\ncurr dictionary: {self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr]}\r\n')
         else:
             print('central device not picked up')  # move on
@@ -326,7 +335,8 @@ class ModelPlugNPlay:
         self.map_canvas.pack(side='left', fill='both', expand=True)
 
         # initialize info screen canvas, that will fit the info screen's portion of the window
-        self.info_screen_canvas = CTkCanvas(self.root, width=self.info_screen_dimensions[0], height=self.info_screen_dimensions[1], bg='#95036d')
+        self.info_screen_canvas = CTkCanvas(self.root, width=self.info_screen_dimensions[0],
+                                            height=self.info_screen_dimensions[1], bg='#95036d')
         self.info_screen_canvas.pack(side='right', fill='both', expand=True)
 
         # update both canvases
@@ -351,7 +361,7 @@ class ModelPlugNPlay:
                 else:
                     word = 'end'
                 edge[word][0], edge[word][1] = (edge[word][0] / self.map_dimensions[0]) * self.canvas_width, (
-                            edge[word][1] / self.map_dimensions[1]) * self.canvas_height
+                        edge[word][1] / self.map_dimensions[1]) * self.canvas_height
             new_edges.append(edge)
 
         self.edges = new_edges
@@ -419,7 +429,7 @@ class ModelPlugNPlay:
 
 
 class RssiData:
-    # TODO write a function that every rate amount of time calls the Get_Back function
+    # TODO write a function that every rate amount of time calls the Get_Back function -  this should be in the gui class
     def __init__(self):
         self.device_whereabouts = [{}, {}]  # list of two dictionaries
         self.curr = 0  # index of the most updated dictionary of the two in the list - the one where you write to
@@ -440,6 +450,101 @@ class RssiData:
         back_dict = self.device_whereabouts[self.back]
         self.Swap_Curr()
         return back_dict
+
+
+class GUI:
+    def __init__(self, root, model, rssi_data_obj):
+        self.root = root
+        self.model = model
+
+        # rssi data
+        self.rate = 1  # every 1 second, the self.curr and self.lists will be updated
+        self.rssi_data_obj = rssi_data_obj
+        self.back_lst = None
+
+        # trilateration
+        self.n = 2  # environment variable
+        self.tx_power = -45  # one meter rssi of the solo
+
+    def get_top_three_rssi(self):
+        """
+        - goes over the self.back_lst - which looks like this: [(mac address, rssi), ...]
+        - gets the top three rssi's
+        """
+        top_three = []
+        for key, val in self.back_lst.items():
+            # add to list
+            top_three.append((key, val))
+            # sort the list, biggest will be first
+            top_three.sort(key=lambda item: item[1], reverse=True)
+            # if there are more than three values in the list, remove the smallest one:
+            if len(top_three) > 3:
+                top_three.pop()
+        self.calculate_distances(top_three)
+
+    def get_coordinates(self, mac_addr):
+        """
+        - returns the coordinates for the peripheral device with the certain mac address
+        """
+        for beacon in self.model.beacons:
+            if beacon['mac_address'] == mac_addr:
+                return beacon['coordinates']
+
+    def calculate_distances(self, rssi_list):
+        """
+        - Convert RSSI to distance using the Log-Distance Path Loss Model.
+        - does this for the top three rssi values, and creates a new list - [(coords_of_peripheral, distance), ....]
+        """
+        coordinate_distance_list = []
+        for t in rssi_list:
+            # distance calculation
+            rssi = t[1]
+            distance = 10 ** ((self.tx_power - rssi) / (10 * self.n))
+            # getting the coordinates of the peripheral device that made the scan
+            mac_addr = t[0]
+            peripheral_coordinates = self.get_coordinates(mac_addr)
+            coordinate_distance_list.append((peripheral_coordinates, distance))
+
+        self.trilaterate(coordinate_distance_list)
+
+    def trilaterate(self, coordinate_distance_list):
+        """
+        Trilateration function to calculate the estimated location of the central device.
+
+        Parameters:
+        - reference_points: List of tuples (x, y) representing the known positions of BLE peripherals.
+        - distances: List of distances from the central device to each BLE peripheral.
+
+        Returns:
+        - Tuple (x, y): Estimated coordinates of the central device
+        """
+        reference_points = [coordinates for coordinates in coordinate_distance_list[1]]  # crate seperate list that holds the peripheral devices coordinates
+        distances = [distance for distance in coordinate_distance_list[0]]
+
+        A = 2 * (reference_points[1][0] - reference_points[0][0])
+        B = 2 * (reference_points[1][1] - reference_points[0][1])
+        C = distances[0] ** 2 - distances[1] ** 2 - reference_points[0][0] ** 2 + reference_points[1][0] ** 2 - \
+            reference_points[0][1] ** 2 + reference_points[1][1] ** 2
+
+        D = 2 * (reference_points[2][0] - reference_points[1][0])
+        E = 2 * (reference_points[2][1] - reference_points[1][1])
+        F = distances[1] ** 2 - distances[2] ** 2 - reference_points[1][0] ** 2 + reference_points[2][0] ** 2 - \
+            reference_points[1][1] ** 2 + reference_points[2][1] ** 2
+
+        x = (C * E - F * B) / (E * A - B * D)
+        y = (C * D - A * F) / (B * D - A * E)
+        print(x, y)
+        #return x, y
+        return
+
+    def update_rssi_data_list(self):
+        while True:
+            time.sleep(self.rate)
+            self.back_lst = self.rssi_data_obj.Get_Back()
+            self.get_top_three_rssi()
+
+    def start(self):
+        self.update_rssi_data_list()
 
 
 def main():
