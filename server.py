@@ -19,180 +19,61 @@ class Manager:
         self.peripheral_device_count = None
         self.server_object = None
 
+        # _______________________
         # ModelPlugNPlay
         self.model_address = None
-        self.Model = None
 
-        # GUI
-        self.root = CTk()
+        # GUIManager
+        self.gui_object = None
+        # _______________________
 
         # RssiData
         self.rssi_data_obj = None
 
-        # GUI Manager
-        """
-        - holds all the functions that update the gui
-        - Will be passed as an attribute to the ModelPlugNPlay, and the GUI class
-        """
+        # CalculateCoords
+        self.coordinate_calculator = None
+
+        # threads
+        self.threads = []
 
     def start(self):
-        # Model
-        # self.model_address = 'Models/test_model.json'
-        self.model_address = 'Models/model_2.json'
-        self.Model = ModelPlugNPlay(self.model_address, self.root)
-        model_thread = threading.Thread(target=self.Model.start())
+        # 1. GuiManager
+        self.model_address = 'Models/test_model.json'
+        self.gui_object = GuiManager(self.model_address)
+
 
         # RssiData
         self.rssi_data_obj = RssiData()
 
-        # ServerCommunication
+        # Server_Communication
         self.peripheral_device_count = 1  # amount of peripheral devices required
-        self.server_object = ServerCommunication(self.peripheral_device_count, self.Model.mac_list, self.rssi_data_obj)
-        server_thread = threading.Thread(target=self.server_object.start())
+        self.server_object = ServerCommunication(self.peripheral_device_count, self.gui_object, self.rssi_data_obj)
+        server_thread = threading.Thread(target=self.server_object.start)
+        self.threads.append(server_thread)
 
-        # GUI 
+        # CalculateCoords
+        self.coordinate_calculator = CalculateCoords(self.gui_object, self.rssi_data_obj)
+        Coordinate_Calulator_Thread = threading.Thread(target=self.coordinate_calculator.start)
+        self.threads.append(Coordinate_Calulator_Thread)
 
+        # start threads
+        for t in self.threads:
+            t.start()
 
-class ServerCommunication:
-    def __init__(self, peripheral_count, model, rssi_data_obj):
-        # socket
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # create the server socket
-        self.ip_addr = '172.16.1.118'
-        self.port = 4500
+        self.gui_object.start()
 
-        # Data structures
-        self.peripheral_device_count = peripheral_count  # amount of peripheral devices required
-        # self.peripheral_devices = []  # list that holds all the peripheral sockets
-        self.peripheral_devices = {}  # dictionary that holds all the peripheral sockets and their mac addresses
-        self.sockets_dict = {self.server_socket: self.ip_addr}  # holds all the sockets, for the select
-        self.verification_list = []  # list of sockets that need to be verified
-        self.start_list = []
-        self.connected_peripherals = 0
-        self.peripheral_macs = ['30:30:F9:77:0B:C8']
-
-        self.min_peripherals = 3
-
-        self.central_device_mac = '1C:9D:C2:35:A8:52'
-
-        # Model
-        self.model = model
-
-        # RssiData
-        self.rssi_data_obj = rssi_data_obj
-
-    def receive_error(self, sock, error):  # if response[0] is false, handle it here
-        if error == 'empty':  # socket disconnected
-            print(f'{self.sockets_dict[sock]} has disconnected gracefully')
-            # handle disconnection ...
-            del self.sockets_dict[sock]  # remove from dictionary
-            del self.peripheral_devices[sock]  # remove from dictionary
-            # TODO handle the rest
-        else:  # error with data formatting
-            print('error with data formatting, or exception')
-            # handle error
-
-    def new_connection(self):
-        c_s, addr = self.server_socket.accept()  # accept connection
-
-        # add to appropriate lists/dictionaries
-        self.sockets_dict[c_s] = addr
-        self.verification_list.append(c_s)
-
-        # start verification process
-        query = Protocol.create_msg('what is your mac address')
-        c_s.send(query)
-
-    def verify_connected_sockets(self, sock):
-        response = Protocol.get_msg(sock)
-        if response[0]:
-            # if response[1] in self.model:  # if mac address is in peripheral_device mac addresses list, allow connection
-            if response[1] in self.peripheral_macs:
-                # TODO Make sure that the same mac address isn't already connected, and add the mac address to peripheral devices list/dictionary
-                print(f'authenticated {self.sockets_dict[sock]}')
-                # handle lists and dictionaries
-                self.verification_list.remove(sock)
-                self.peripheral_devices[sock] = response[1]
-                self.connected_peripherals += 1
-                # send start message
-                sock.send(Protocol.create_msg('start'))
-            else:  # if socket is not a peripheral device
-                print(f'{self.sockets_dict[sock]} is not a peripheral device')
-                self.verification_list.remove(sock)
-                del self.sockets_dict[sock]
-        else:
-            self.receive_error(sock, response[1])
-
-    def handle_peripheral_communication(self, sock):
-        print('getting data from peripheral device and checking')
-        response = Protocol.get_serialized_data(sock)  # receive data from socket
-        if response[0]:
-            print(f'got data from {self.sockets_dict[sock]}\n{response[1]}\n')
-            if self.connected_peripherals >= self.min_peripherals:
-                print('doing things with data')
-                self.get_central_device_data(response[1], sock)
-            else:
-                print('not doing anything with data, not enough peripherals')
-        else:
-            self.receive_error(sock, response[1])
-
-    def get_central_device_data(self, data_dictionary, sock):  # Gets central device rssi
-        if self.central_device_mac in data_dictionary.keys():  # check if central device was picked up in scan
-            central_rssi = data_dictionary[self.central_device_mac][0]
-            print(f'most recent rssi recorded by {self.peripheral_devices[sock]}: {central_rssi} dbm')
-
-            # add data to self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr] dictionary
-            self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr][
-                self.peripheral_devices[sock]] = central_rssi
-            print(f'\r\ncurr dictionary: {self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr]}\r\n')
-        else:
-            print('central device not picked up')  # move on
-
-    def socket_in_xlist(self, sock):
-        print(f'error with peripheral device: {self.sockets_dict[sock]}')
-        # handle disconnected socket
-
-    def communication(self):  # handles communication
-        """
-                        IMPORTANT!!!
-                         - timeout set to none
-                         - network related code will be running in a separate thread/process
-                         - gui related code will be running in a separate thread/process
-                         - interactions between the network thread and the gui thread should be done using thread-safe mechanisms
-        """
-        try:
-            while True:
-                rlist, [], xlist = select.select(self.sockets_dict.keys(), [], self.sockets_dict.keys(), 0.01)
-
-                for sock in rlist:
-                    if sock == self.server_socket:  # new connection
-                        self.new_connection()
-
-                    elif sock in self.verification_list:  # verify connected sockets
-                        self.verify_connected_sockets(sock)
-
-                    else:  # incoming message from peripheral device
-                        self.handle_peripheral_communication(sock)
-
-                for sock in xlist:
-                    self.socket_in_xlist(sock)
-
-        except KeyboardInterrupt:  # in case server was stopped manually
-            print('server manually stopped')
-
-        finally:  # cleanup - close sockets
-            print('ending communication, closing sockets...')
-
-    def start(self):
-        # initialize server socket
-        self.server_socket.bind((self.ip_addr, self.port))
-        self.server_socket.listen()
-        print('server is listening for connections...')
-
-        self.communication()
+        # wait for threads to finish
+        for t in self.threads:
+            t.join()
 
 
-class ModelPlugNPlay:
-    def __init__(self, address, root):
+class GuiManager:
+    # in charge of ModelPlugNPlay and the gui
+    def __init__(self, address):
+        # ready variables
+        self.server_ready = False
+        self.coordinate_calculator_ready = False
+
         # model
         self.model_address = address
         self.edges = []
@@ -213,7 +94,7 @@ class ModelPlugNPlay:
 
         # window
         self.window_dimensions = []
-        self.root = root
+        self.root = CTk()
 
     def get_map_size(self):
         """
@@ -299,6 +180,7 @@ class ModelPlugNPlay:
         self.edges = data['edges']
         self.beacons = data['beacons']
         self.mac_list = [beacon['mac_address'] for beacon in self.beacons]
+        print(self.mac_list)
 
         width, height = self.get_map_size()
         print(width, height)
@@ -424,12 +306,13 @@ class ModelPlugNPlay:
         # create window - place beacons, edges, and add divider between map and info screens
         self.create_window()
 
+        self.ready = True
+
         # test it out
         self.root.mainloop()
 
 
 class RssiData:
-    # TODO write a function that every rate amount of time calls the Get_Back function -  this should be in the gui class
     def __init__(self):
         self.device_whereabouts = [{}, {}]  # list of two dictionaries
         self.curr = 0  # index of the most updated dictionary of the two in the list - the one where you write to
@@ -452,10 +335,149 @@ class RssiData:
         return back_dict
 
 
-class GUI:
-    def __init__(self, root, model, rssi_data_obj):
-        self.root = root
-        self.model = model
+class ServerCommunication:
+    def __init__(self, peripheral_count, gui_object, rssi_data_obj):
+        # socket
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # create the server socket
+        self.ip_addr = '172.16.1.118'
+        self.port = 4500
+
+        # Data structures
+        self.peripheral_device_count = peripheral_count  # amount of peripheral devices required
+        # self.peripheral_devices = []  # list that holds all the peripheral sockets
+        self.peripheral_devices = {}  # dictionary that holds all the peripheral sockets and their mac addresses
+        self.sockets_dict = {self.server_socket: self.ip_addr}  # holds all the sockets, for the select
+        self.verification_list = []  # list of sockets that need to be verified
+        self.start_list = []
+        self.connected_peripherals = 0
+
+        self.min_peripherals = 3
+
+        self.central_device_mac = '1C:9D:C2:35:A8:52'
+
+        # GuiManager
+        self.gui_object = gui_object
+
+        # RssiData
+        self.rssi_data_obj = rssi_data_obj
+
+    def receive_error(self, sock, error):  # if response[0] is false, handle it here
+        if error == 'empty':  # socket disconnected
+            print(f'{self.sockets_dict[sock]} has disconnected gracefully')
+            # handle disconnection ...
+            del self.sockets_dict[sock]  # remove from dictionary
+            del self.peripheral_devices[sock]  # remove from dictionary
+            self.connected_peripherals -= 1
+            # TODO handle the rest
+        else:  # error with data formatting
+            print('error with data formatting, or exception')
+            # handle error
+
+    def new_connection(self):
+        c_s, addr = self.server_socket.accept()  # accept connection
+
+        # add to appropriate lists/dictionaries
+        self.sockets_dict[c_s] = addr
+        self.verification_list.append(c_s)
+
+        # start verification process
+        query = Protocol.create_msg('what is your mac address')
+        c_s.send(query)
+
+    def verify_connected_sockets(self, sock):
+        response = Protocol.get_msg(sock)
+        if response[0]:
+            print(f'mac address: {response[1]}, allowed mac address: {response[1] in self.gui_object.mac_list}')
+            if response[1] in self.gui_object.mac_list:
+                # TODO Make sure that the same mac address isn't already connected, and add the mac address to peripheral devices list/dictionary
+                print(f'authenticated {self.sockets_dict[sock]}')
+                # handle lists and dictionaries
+                self.verification_list.remove(sock)
+                self.peripheral_devices[sock] = response[1]
+                self.connected_peripherals += 1
+                # send start message
+                sock.send(Protocol.create_msg('start'))
+            else:  # if socket is not a peripheral device
+                print(f'{self.sockets_dict[sock]} is not a peripheral device')
+                self.verification_list.remove(sock)
+                del self.sockets_dict[sock]
+        else:
+            self.receive_error(sock, response[1])
+
+    def handle_peripheral_communication(self, sock):
+        print('getting data from peripheral device and checking')
+        response = Protocol.get_serialized_data(sock)  # receive data from socket
+        if response[0]:
+            print(f'got data from {self.sockets_dict[sock]}\n{response[1]}\n')
+            if self.connected_peripherals >= self.min_peripherals:
+                print('doing things with data')
+                self.get_central_device_data(response[1], sock)
+            else:
+                print('not doing anything with data, not enough peripherals')
+        else:
+            self.receive_error(sock, response[1])
+
+    def get_central_device_data(self, data_dictionary, sock):  # Gets central device rssi
+        if self.central_device_mac in data_dictionary.keys():  # check if central device was picked up in scan
+            central_rssi = data_dictionary[self.central_device_mac][0]
+            print(f'most recent rssi recorded by {self.peripheral_devices[sock]}: {central_rssi} dbm')
+
+            # add data to self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr] dictionary
+            self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr][
+                self.peripheral_devices[sock]] = central_rssi
+            self.gui_object.coordinate_calculator_ready = True
+            print(f'\r\ncurr dictionary: {self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr]}\r\n')
+        else:
+            print('central device not picked up')  # move on
+
+    def socket_in_xlist(self, sock):
+        print(f'error with peripheral device: {self.sockets_dict[sock]}')
+        # handle disconnected socket
+
+    def communication(self):  # handles communication
+        """
+                        IMPORTANT!!!
+                         - timeout set to none
+                         - network related code will be running in a separate thread/process
+                         - gui related code will be running in a separate thread/process
+                         - interactions between the network thread and the gui thread should be done using thread-safe mechanisms
+        """
+        try:
+            while True:
+                rlist, [], xlist = select.select(self.sockets_dict.keys(), [], self.sockets_dict.keys(), 0.01)
+
+                for sock in rlist:
+                    if sock == self.server_socket:  # new connection
+                        self.new_connection()
+
+                    elif sock in self.verification_list:  # verify connected sockets
+                        self.verify_connected_sockets(sock)
+
+                    else:  # incoming message from peripheral device
+                        self.handle_peripheral_communication(sock)
+
+                for sock in xlist:
+                    self.socket_in_xlist(sock)
+
+        except KeyboardInterrupt:  # in case server was stopped manually
+            print('server manually stopped')
+
+        finally:  # cleanup - close sockets
+            print('ending communication, closing sockets...')
+
+    def start(self):
+        while not self.gui_object.server_ready:
+            # initialize server socket
+            self.server_socket.bind((self.ip_addr, self.port))
+            self.server_socket.listen()
+            print('server is listening for connections...')
+
+            self.communication()
+
+
+class CalculateCoords:
+    def __init__(self, gui_obj, rssi_data_obj):
+        self.gui_obj = gui_obj
 
         # rssi data
         self.rate = 1  # every 1 second, the self.curr and self.lists will be updated
@@ -486,7 +508,7 @@ class GUI:
         """
         - returns the coordinates for the peripheral device with the certain mac address
         """
-        for beacon in self.model.beacons:
+        for beacon in self.gui_obj.beacons:
             if beacon['mac_address'] == mac_addr:
                 return beacon['coordinates']
 
@@ -535,6 +557,7 @@ class GUI:
         y = (C * D - A * F) / (B * D - A * E)
         print(x, y)
         #return x, y
+        # call function that updates gui
         return
 
     def update_rssi_data_list(self):
@@ -544,6 +567,8 @@ class GUI:
             self.get_top_three_rssi()
 
     def start(self):
+        while not self.gui_obj.coordinate_calculator_ready:
+            time.sleep(0.01)
         self.update_rssi_data_list()
 
 
