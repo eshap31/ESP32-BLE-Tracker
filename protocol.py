@@ -24,40 +24,43 @@ class Protocol:
         return Protocol.create_msg(json.dumps(dictionary))
 
     @staticmethod
-    def get_msg(my_client):
+    def get_msg(server_socket):
         """
         Extract message from protocol, without the length field
         If length field does not include a number, returns False, "Error"
         :rtype: (bool, str)
         """
-        print('in get_msg')
+        #print('in get_msg')
         len_word = ''
         for i in range(0, Protocol.LENGTH_FIELD_SIZE):
-            print('before receiving 1 byte')
-            len_word += my_client.recv(1).decode()
-            print('received 1 byte from socket')
+            #print('before receiving 1 byte')
+            recvd_one, addr = server_socket.recvfrom(1).decode()
+            len_word += recvd_one
+            #print('received 1 byte from socket')
             if not len_word:
                 return False, 'empty'
-            print(f"in length: {len_word}")
+            #print(f"in length: {len_word}")
 
         if len_word.isnumeric():
             read_length = int(len_word)
-            message = my_client.recv(read_length).decode()
-            print(f"in data: {message}")
-            print(f'length received: {len(message)}')
+            message, addr = server_socket.recvfrom(read_length).decode()
+            #print(f"in data: {message}")
+            #print(f'length received: {len(message)}')
             while len(message) < read_length:
-                message += (my_client.recv(read_length - len(message)).decode())
-                print(f"in data: {message}")
 
-            print(len(message) == read_length)
+                data, addr = server_socket.recvfrom(read_length - len(message)).decode()
+                message += data
+                #print(f"in data: {message}")
+
+            #print(len(message) == read_length)
             return True, message
         else:
             return False, "Error"
 
     @staticmethod
-    def get_serialized_data(my_client):
+    def get_serialized_data(server_socket):
         print('getting serialized data')
-        data = Protocol.get_msg(my_client)
+        data = Protocol.get_msg(server_socket)
         print('checking serialized data in get_serialized_data')
         if data[0]:
             try:

@@ -1,4 +1,4 @@
-import socket
+import usocket as socket
 import network
 import time
 from micropython import const
@@ -45,12 +45,18 @@ class Protocol:
         If length field does not include a number, returns False, "Error"
         :rtype: (bool, str)
         """
-        len_word = my_client.recv(Protocol.LENGTH_FIELD_SIZE).decode()
-        if Protocol.is_integer(len_word):
-            message = my_client.recv(int(len_word)).decode()
-            return True, message
-        else:
-            return False, "Error"
+        try:
+            len_word, server_addr = my_client.recvfrom(Protocol.LENGTH_FIELD_SIZE).decode()
+            if Protocol.is_integer(len_word):
+                message, server_addr = my_client.recvfrom(int(len_word)).decode()
+                return True, message
+            else:
+                return False, "Error"
+        except OSError as e:
+                if e.errno == errno.ECONNABORTED:
+                    print(f'found os error :{e}')
+                else:
+                    print(f'found a different error: {e}')
 
     @staticmethod
     def get_serialized_data(my_client):
@@ -188,7 +194,7 @@ class BleScanner:
 class Networking:
     def __init__(self, esp32_peripheral, rate):
         self.port = 4500
-        self.server_ip = '10.100.102.31'
+        self.server_ip = '172.16.1.118'
         self.client_socket = None
         self.mac_address = None
         
@@ -200,8 +206,14 @@ class Networking:
     def wait_for_server_msg(self):  # wait for stop message from server
         while True:
             """ change """
-            data = self.client_socket.recv(1024)
-            data = data.decode()
+            try:
+                data, addr = self.client_socket.recvfrom(1024)
+                data = data.decode()
+            except OSError as e:
+                if e.errno == errno.ECONNABORTED:
+                    print(f'found os error :{e}')
+                else:
+                    print(f'found a different error: {e}')
             """ """
             with self.lock:  # allow syncronization, and prevent race conditions
                 if data == 'stop':
@@ -224,23 +236,27 @@ class Networking:
                 continue
             data = Protocol.create_serialized_data(back)
             print('got data')
-            self.client_socket.send(data)
+            try:           
+                self.client_socket.sendto(data, self.server_ip)
+            except OSError as e:
+                if e.errno == errno.ECONNABORTED:
+                    print(f'error with sending data: {e}')
+                else:
+                    print(f'found a different error: {e}')
             print('sent')
             #print(f'sent: {back}')
 
     def start(self, mac_address):
         self.mac_address = mac_address
 
-        # socket setup
-        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client_socket.connect((self.server_ip, self.port))
-        print('connected')
+        # UDP socket setup
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
         data = Protocol.get_msg(self.client_socket)
         print(data[1])  # print verification question
         print(f'sending: {self.mac_address} as answer')
-        verif = Protocol.create_msg(self.mac_address) # send the server verification message
-        self.client_socket.send(verif)
+        verif = Protocol.create_msg(self.mac_address) # create packet
+        self.client_socket.sendto(verif, self.server_ip)  # send the mac address
         data = Protocol.get_msg(self.client_socket)
         if data[0]:  # if the server sent 'start'
             self.stop = False  # the server has sent permission to start
@@ -262,17 +278,17 @@ class CoordinatorClass:  # main class, that manages everything
         
     def start(self):
         #wifi info
-        #self.ssid = 'Adassim'
-        #self.password = '20406080'
-        self.ssid = 'Needham'
-        self.password = 'gr2Hoyer'
+        self.ssid = 'Adassim'
+        self.password = '20406080'
+        #self.ssid = 'Needham'
+        #self.password = 'gr2Hoyer'
 
         #BleScanner class
         ms_scan = 10000  # (ms) - Scan for 10s (at 100% duty cycle)
         esp32_scanner = BleScanner(ms_scan)
 
         #Networking class
-        rate = 4
+        rate = 1
         self.esp32_client = Networking(esp32_scanner, rate)
 
         mac_address = ConnectToWifi.start(self.ssid, self.password)
