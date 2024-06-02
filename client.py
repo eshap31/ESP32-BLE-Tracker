@@ -195,6 +195,7 @@ class Networking:
     def __init__(self, esp32_peripheral, rate):
         self.port = 4500
         self.server_ip = '172.16.1.118'
+        self.server_tuple = (self.server_ip, self.port)
         self.client_socket = None
         self.mac_address = None
         
@@ -237,7 +238,7 @@ class Networking:
             data = Protocol.create_serialized_data(back)
             print('got data')
             try:           
-                self.client_socket.sendto(data, self.server_ip)
+                self.client_socket.sendto(data, self.server_tuple)
             except OSError as e:
                 if e.errno == errno.ECONNABORTED:
                     print(f'error with sending data: {e}')
@@ -252,11 +253,10 @@ class Networking:
         # UDP socket setup
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
-        data = Protocol.get_msg(self.client_socket)
-        print(data[1])  # print verification question
-        print(f'sending: {self.mac_address} as answer')
+        print(f'sending: {self.mac_address} as verification field')
         verif = Protocol.create_msg(self.mac_address) # create packet
-        self.client_socket.sendto(verif, self.server_ip)  # send the mac address
+        self.client_socket.sendto(verif, self.server_tuple)  # send the mac address
+        print('sent')
         data = Protocol.get_msg(self.client_socket)
         if data[0]:  # if the server sent 'start'
             self.stop = False  # the server has sent permission to start
