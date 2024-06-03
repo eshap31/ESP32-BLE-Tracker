@@ -8,12 +8,9 @@ class Protocol:
     @staticmethod
     def create_msg(data):
         """
-        Create a valid protocol message, with length field
+        Create a valid protocol message
         """
-        length = str(len(str(data)))
-        zfill_length = length.zfill(Protocol.LENGTH_FIELD_SIZE)
-        message = zfill_length + str(data)
-        return message.encode()
+        return (str(data)).encode()
 
     @staticmethod
     def create_serialized_data(dictionary):
@@ -24,43 +21,20 @@ class Protocol:
         return Protocol.create_msg(json.dumps(dictionary))
 
     @staticmethod
-    def get_msg(server_socket):
-        """
-        Extract message from protocol, without the length field
-        If length field does not include a number, returns False, "Error"
-        :rtype: (bool, str)
-        """
-        #print('in get_msg')
-        len_word = ''
-        for i in range(0, Protocol.LENGTH_FIELD_SIZE):
-            #print('before receiving 1 byte')
-            recvd_one, addr = server_socket.recvfrom(1).decode()
-            len_word += recvd_one
-            #print('received 1 byte from socket')
-            if not len_word:
-                return False, 'empty'
-            #print(f"in length: {len_word}")
-
-        if len_word.isnumeric():
-            read_length = int(len_word)
-            message, addr = server_socket.recvfrom(read_length).decode()
-            #print(f"in data: {message}")
-            #print(f'length received: {len(message)}')
-            while len(message) < read_length:
-
-                data, addr = server_socket.recvfrom(read_length - len(message)).decode()
-                message += data
-                #print(f"in data: {message}")
-
-            #print(len(message) == read_length)
-            return True, message
+    def get_msg(data):
+        print('getting data')
+        if len(data) == 0:
+            return False, 'empty'
+        elif len(data) > 0:
+            data = data.decode()
+            return True, data
         else:
-            return False, "Error"
+            return False, 'error'
 
     @staticmethod
-    def get_serialized_data(server_socket):
+    def get_serialized_data(recvd_data):
         print('getting serialized data')
-        data = Protocol.get_msg(server_socket)
+        data = Protocol.get_msg(recvd_data)
         print('checking serialized data in get_serialized_data')
         if data[0]:
             try:
@@ -73,3 +47,5 @@ class Protocol:
             return False, 'empty'
         else:
             return False, 'Error'
+
+

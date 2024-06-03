@@ -17,26 +17,37 @@ import ubinascii
 """
 
 class Protocol:
-    LENGTH_FIELD_SIZE = 5
+    BUFFER_SIZE = 1000
 
     @staticmethod
     def create_msg(data):
         """
         Create a valid protocol message, with length field
         """
-        length = str(len(str(data)))
-        print(f'length of data: {length}')
-        zfill_length = Protocol.custom_zfill(length)
-        message = zfill_length.encode() + data
-        return message
+        return data.encode()
 
     @staticmethod
-    def create_serialized_data(dictionary):
+    def create_serialized_data(d1):
         """
         serializes the dictionary into json format, then calls the Protocol.create_message() func to format the data
         for sending
         """
-        return Protocol.create_msg(ujson.dumps(dictionary))
+        l = []
+        d2 = {}
+        d3 = {}
+        d = None
+        for i in d1.keys():
+            d3[i] = d1[i]
+            if len(ujson.dumps(d3)) + len(ujson.dumps(d2)) < Protocol.BUFFER_SIZE:  # can add more data to packet
+                d2.update(d3)
+            else:
+                l.append(ujson.dumps(d2))
+                d2 = {i: d1[i]}
+                
+            d3 = {}
+            
+        l.append(ujson.dumps(d2))
+        return l
 
     @staticmethod
     def get_msg(my_client):
@@ -46,44 +57,14 @@ class Protocol:
         :rtype: (bool, str)
         """
         try:
-            len_word, server_addr = my_client.recvfrom(Protocol.LENGTH_FIELD_SIZE).decode()
-            if Protocol.is_integer(len_word):
-                message, server_addr = my_client.recvfrom(int(len_word)).decode()
-                return True, message
+            data, server_addr = my_client.recvfrom(Protocol.BUFFER_SIZE)
+            print(f'in get message: {data}, type: {type(data)}')
+            if len(data) > 0:
+                return True, data.decode()
             else:
-                return False, "Error"
-        except OSError as e:
-                if e.errno == errno.ECONNABORTED:
-                    print(f'found os error :{e}')
-                else:
-                    print(f'found a different error: {e}')
-
-    @staticmethod
-    def get_serialized_data(my_client):
-        data = Protocol.get_msg(my_client)
-        if data[0]:
-            return True, ujson.loads(data[1])
-        else:
-            return False, 'Error'
-        
-    @staticmethod    
-    def is_integer(s):
-        try:
-            int(s)
-            return True
-        except ValueError:
-            return False
-    
-    @staticmethod
-    def custom_zfill(s):
-        # Calculate how many zeros we need to prepend
-        needed_zeros = Protocol.LENGTH_FIELD_SIZE - len(s)
-        if needed_zeros > 0:
-            # Prepend the zeros to the string
-            return '0' * needed_zeros + s
-        else:
-            # If the string is already the required length or longer, return it unchanged
-            return s
+                return (False, "Error")
+        except Exception as e:
+            print(f'error: {e}')
 
 
 class ConnectToWifi:
@@ -193,7 +174,7 @@ class BleScanner:
 
 class Networking:
     def __init__(self, esp32_peripheral, rate):
-        self.port = 4500
+        self.port = 5005
         self.server_ip = '172.16.1.118'
         self.server_tuple = (self.server_ip, self.port)
         self.client_socket = None
@@ -237,14 +218,15 @@ class Networking:
                 continue
             data = Protocol.create_serialized_data(back)
             print('got data')
-            try:           
-                self.client_socket.sendto(data, self.server_tuple)
+            try:
+                for d in data:
+                    self.client_socket.sendto(d, self.server_tuple)
             except OSError as e:
                 if e.errno == errno.ECONNABORTED:
                     print(f'error with sending data: {e}')
                 else:
                     print(f'found a different error: {e}')
-            print('sent')
+            print(f'sent: {d}')
             #print(f'sent: {back}')
 
     def start(self, mac_address):
