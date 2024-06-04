@@ -129,7 +129,6 @@ class BleScanner:
     def Get_Back(self):
         back_dict = self.devs[self.back]
         self._Swap_Curr()
-        gc.collect()
         return back_dict
     
     def _Swap_Curr(self):
@@ -161,14 +160,14 @@ class BleScanner:
                 when scan is completed, start a new one
             """
             # Scan duration finished or manually stopped.
-            self.bt.gap_scan(self.ms_scan, 10000, 10000)  # start a new scan
+            self.bt.gap_scan(self.ms_scan, 10000, 5)  # start a new scan
         
     def start(self): 
         self.bt.irq(self.bt_irq)
         self.bt.active(True)
         print("BLE Active:", self.bt.active())
         print('starting scan...')
-        self.bt.gap_scan(self.ms_scan, 10000, 10000)
+        self.bt.gap_scan(self.ms_scan, 10000, 5)
         time.sleep_ms(self.ms_scan)
         
 
@@ -196,6 +195,7 @@ class Networking:
                     print(f'found os error :{e}')
                 else:
                     print(f'found a different error: {e}')
+                    print(f'free memory: {gc.mem_free()} bytes')
             """ """
             with self.lock:  # allow syncronization, and prevent race conditions
                 if data == 'stop':
@@ -218,6 +218,7 @@ class Networking:
                 continue
             data = Protocol.create_serialized_data(back)
             print('got data')
+            sum = 0
             try:
                 for d in data:
                     self.client_socket.sendto(d, self.server_tuple)
@@ -226,15 +227,15 @@ class Networking:
                     print(f'error with sending data: {e}')
                 else:
                     print(f'found a different error: {e}')
-            print(f'sent: {d}')
-            #print(f'sent: {back}')
+            print(f'free memory: {gc.mem_free()} bytes')
+            # free garbage collector
 
     def start(self, mac_address):
         self.mac_address = mac_address
-
+        
+        print('free memory: {gc.mem_free()}')
         # UDP socket setup
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        
         print(f'sending: {self.mac_address} as verification field')
         verif = Protocol.create_msg(self.mac_address) # create packet
         self.client_socket.sendto(verif, self.server_tuple)  # send the mac address
