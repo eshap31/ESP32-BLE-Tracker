@@ -168,6 +168,7 @@ class GuiManager:
         """
         - according to the canvas height and width, change all the coordinates of the edges, and beacons, so that the
           scale doesn't change
+        - put resized coordinates into resized_model.json, and update self.beacons and self.edges
         """
         new_edges = []
         for edge in self.edges:
@@ -184,8 +185,8 @@ class GuiManager:
 
         new_beacons = []
         for beacon in self.beacons:
-            beacon['coordinates'][0], beacon['coordinates'][1] = (beacon['coordinates'][0] / self.map_dimensions[
-                0]) * self.canvas_width, (beacon['coordinates'][1] / self.map_dimensions[1]) * self.canvas_height
+            beacon['coordinates'][0], beacon['coordinates'][1] = int((beacon['coordinates'][0] / self.map_dimensions[
+                0]) * self.canvas_width), int((beacon['coordinates'][1] / self.map_dimensions[1]) * self.canvas_height)
             new_beacons.append(beacon)
 
         self.beacons = new_beacons

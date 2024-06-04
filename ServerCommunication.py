@@ -60,7 +60,7 @@ class ServerCommunication:
         print(f'getting data from peripheral device, {ip_addr} and checking')
         response = Protocol.get_serialized_data(data)  # receive data from socket
         if response[0]:
-            print(f'got data from {ip_addr}\n{response[1]}\n')
+            #print(f'got data from {ip_addr}\n{response[1]}\n')
             if self.connected_peripherals >= self.min_peripherals:  # minimum of three peripherals do trilaterate
                 print('doing things with data')
                 self.get_central_device_data(response[1], ip_addr)
@@ -78,7 +78,7 @@ class ServerCommunication:
             self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr][
                 self.peripheral_devices[ip_addr]] = central_rssi
             self.gui_object.coordinate_calculator_ready = True
-            print(f'\r\ncurr dictionary: {self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr]}\r\n')
+            #print(f'\r\ncurr dictionary: {self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr]}\r\n')
         else:
             print('central device not picked up')  # move on
 

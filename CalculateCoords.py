@@ -17,7 +17,8 @@ class CalculateCoords:
     def get_top_three_rssi(self):
         """
         - goes over the self.back_lst - which looks like this: [(mac address, rssi), ...]
-        - gets the top three rssi's
+        - gets the top three rssi's, and the beacon mac address that scanned
+        - calls the calculate_distances function
         """
         top_three = []
         for key, val in self.back_lst.items():
@@ -42,23 +43,27 @@ class CalculateCoords:
 
     def calculate_distances(self, rssi_list):
         """
+        - rssi_list: [mac_addr:rssi, mac_addr:rssi, ...]
         - Convert RSSI to distance using the Log-Distance Path Loss Model.
-        - does this for the top three rssi values, and creates a new list - [(coords_of_peripheral, distance), ....]
+        - does this for the top three rssi values
         """
         coordinate_distance_list = []
+        reference_points = []  # list of tuples of the relevant beacon coordinates
+        distances = []
         for t in rssi_list:
             # distance calculation
             rssi = t[1]
-            distance = 10 ** ((self.tx_power - rssi) / (10 * self.n))
+            distance = int(10 ** ((self.tx_power - rssi) / (10 * self.n)))
             # getting the coordinates of the peripheral device that made the scan
             mac_addr = t[0]
             peripheral_coordinates = self.get_coordinates(mac_addr)
-            coordinate_distance_list.append((peripheral_coordinates, distance))
+            reference_points.append(peripheral_coordinates)
+            distances.append(distance)
 
-        CalculateCoords.trilaterate(coordinate_distance_list)
+        CalculateCoords.trilaterate(reference_points, distances)
 
     @staticmethod
-    def trilaterate(coordinate_distance_list):
+    def trilaterate(reference_points, distances):
         """
         Trilateration function to calculate the estimated location of the central device.
 
@@ -67,12 +72,8 @@ class CalculateCoords:
         - distances: List of distances from the central device to each BLE peripheral.
 
         Returns:
-        - Tuple (x, y): Estimated coordinates of the central device
+        - Tuple (x, y): Estimated coordinates of the central device..
         """
-        reference_points = [coordinates for coordinates in coordinate_distance_list[
-            1]]  # crate seperate list that holds the peripheral devices coordinates
-        distances = [distance for distance in coordinate_distance_list[0]]
-
         A = 2 * (reference_points[1][0] - reference_points[0][0])
         B = 2 * (reference_points[1][1] - reference_points[0][1])
         C = distances[0] ** 2 - distances[1] ** 2 - reference_points[0][0] ** 2 + reference_points[1][0] ** 2 - \
@@ -85,10 +86,8 @@ class CalculateCoords:
 
         x = (C * E - F * B) / (E * A - B * D)
         y = (C * D - A * F) / (B * D - A * E)
-        print(x, y)
-        # return x, y
-        # call function that updates gui
-        return
+        print(f'coordinates are: {x, y}')
+        # TODO call the function that places the central device on the map
 
     def update_rssi_data_list(self):
         while True:
