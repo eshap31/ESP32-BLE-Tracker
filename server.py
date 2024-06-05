@@ -50,7 +50,7 @@ class Manager:
         self.rssi_data_obj = RssiData()
 
         # Server_Communication
-        self.peripheral_device_count = 3  # amount of peripheral devices required
+        self.peripheral_device_count = 1  # amount of peripheral devices required
         self.server_object = ServerCommunication(self.peripheral_device_count, self.gui_object, self.rssi_data_obj)
         server_thread = threading.Thread(target=self.server_object.start)
         self.threads.append(server_thread)

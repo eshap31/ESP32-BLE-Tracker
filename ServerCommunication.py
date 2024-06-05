@@ -79,8 +79,8 @@ class ServerCommunication:
                 self.peripheral_devices[ip_addr]] = central_rssi
             self.gui_object.coordinate_calculator_ready = True
             #print(f'\r\ncurr dictionary: {self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr]}\r\n')
-        else:
-            print('central device not picked up')  # move on
+        else:  # central device not picked up in list
+            return
 
     def communication(self):  # handles communication
         """
@@ -161,8 +161,7 @@ class old:
     def verify_connected_sockets(self, ip_addr):
         response = Protocol.get_msg(self.server_socket)
         if response[0]:
-            print(f'mac address: {response[1]}, allowed mac address: {response[1] in self.gui_object.mac_list}')
-            if response[1] in self.gui_object.mac_list:
+            if response[1] in self.gui_object.mac_list:  # if the device is allowed to connect
                 # TODO Make sure that the same mac address isn't already connected, and add the mac address to peripheral devices list/dictionary
                 print(f'authenticated {ip_addr}, mac address is {response[1]}')
                 # handle lists and dictionaries
@@ -178,10 +177,9 @@ class old:
             self.receive_error(ip_addr, response[1])
 
     def handle_peripheral_communication(self, ip_addr):
-        print(f'getting data from peripheral device, {ip_addr} and checking')
         response = Protocol.get_serialized_data(self.server_socket)  # receive data from socket
         if response[0]:
-            print(f'got data from {ip_addr}\n{response[1]}\n')
+            print(f'got data from {ip_addr}\n')
             if self.connected_peripherals >= self.min_peripherals:  # minimum of three peripherals do trilaterate
                 print('doing things with data')
                 self.get_central_device_data(response[1], ip_addr)
@@ -197,7 +195,7 @@ class old:
 
             # add data to self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr] dictionary
             self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr][
-                self.peripheral_devices[ip_addr]] = central_rssi
+                ip_addr] = central_rssi
             self.gui_object.coordinate_calculator_ready = True
             print(f'\r\ncurr dictionary: {self.rssi_data_obj.device_whereabouts[self.rssi_data_obj.curr]}\r\n')
         else:
@@ -217,7 +215,6 @@ class old:
 
                 if self.server_socket in rlist:
                     # get the ip address of socket who sent me data
-                    print('in rlist for')
                     data, ip_addr = self.server_socket.recvfrom(
                         0)  # receive 0 bytes, in order to only get the ip address
 

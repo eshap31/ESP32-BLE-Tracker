@@ -58,7 +58,6 @@ class Protocol:
         """
         try:
             data, server_addr = my_client.recvfrom(Protocol.BUFFER_SIZE)
-            print(f'in get message: {data}, type: {type(data)}')
             if len(data) > 0:
                 return True, data.decode()
             else:
@@ -160,7 +159,13 @@ class BleScanner:
                 when scan is completed, start a new one
             """
             # Scan duration finished or manually stopped.
-            self.bt.gap_scan(self.ms_scan, 10000, 5)  # start a new scan
+            try:
+                self.bt.gap_scan(self.ms_scan, 10000, 5)  # start a new scan
+            except KeyboardInterrupt:  # in case server was stopped manually
+                print('manually stopped')
+                return
+            except:
+                print('stopped')
         
     def start(self): 
         self.bt.irq(self.bt_irq)
@@ -189,6 +194,7 @@ class Networking:
             """ change """
             try:
                 data, addr = self.client_socket.recvfrom(1024)
+                print('----')
                 data = data.decode()
             except OSError as e:
                 if e.errno == errno.ECONNABORTED:
@@ -205,6 +211,7 @@ class Networking:
                 
     def send_data(self):  # updates the self.scanner.Get_Back()
         # run a timer that will call: self.scanner.Get_Back(), every rate amount of seconds
+        time.sleep(2)
         while True:
             time.sleep(self.rate)
             with self.lock:  # use with statement, which automatically handles aquire and release
@@ -221,7 +228,9 @@ class Networking:
             sum = 0
             try:
                 for d in data:
+                    print('*****')
                     self.client_socket.sendto(d, self.server_tuple)
+                    print('----')
             except OSError as e:
                 if e.errno == errno.ECONNABORTED:
                     print(f'error with sending data: {e}')
@@ -236,20 +245,20 @@ class Networking:
         print('free memory: {gc.mem_free()}')
         # UDP socket setup
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        print(f'sending: {self.mac_address} as verification field')
+        #print(f'sending: {self.mac_address} as verification field')
         verif = Protocol.create_msg(self.mac_address) # create packet
         self.client_socket.sendto(verif, self.server_tuple)  # send the mac address
-        print('sent')
+        print('sent mac address')
         data = Protocol.get_msg(self.client_socket)
         if data[0]:  # if the server sent 'start'
             self.stop = False  # the server has sent permission to start
             print('moving on to the scanning and sending fase')
             _thread.start_new_thread(self.scanner.start, ())  # start the scanner from here, and create a seperate thread for it
-            print('1')
+            print('opened thread 1')
             _thread.start_new_thread(self.wait_for_server_msg, ())  # start the wait_for_stop func from here, and create a seperate thread for it
-            print('2')
+            print('opened thread 2')
             _thread.start_new_thread(self.send_data, ())  # start the send_data func from here, and create a seperate thread for it"""
-            print('3')
+            print('opened thread 3')
         
         
         
