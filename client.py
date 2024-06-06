@@ -141,6 +141,9 @@ class BleScanner:
             addr_type, addr, connectable, rssi, adv_data = data
             decoded_address = ':'.join(['%02X' % i for i in addr])
             
+            # Do the EMA filter on the rssi - alpha = 0.1
+            filtered_rssi = alpha * rssi[-1] + (1 - alpha) * rssi[-1]
+            
             # check if the device was already picked up
             if self.devs[self.curr].get(decoded_address) is None:  # new device
                 self.devs[self.curr][decoded_address] = (rssi, self.ttl)  # update the curr dictionary
@@ -160,7 +163,7 @@ class BleScanner:
             """
             # Scan duration finished or manually stopped.
             try:
-                self.bt.gap_scan(self.ms_scan, 10000, 5)  # start a new scan
+                self.bt.gap_scan(self.ms_scan, 350, 150)  # start a new scan
             except KeyboardInterrupt:  # in case server was stopped manually
                 print('manually stopped')
                 return
@@ -172,7 +175,7 @@ class BleScanner:
         self.bt.active(True)
         print("BLE Active:", self.bt.active())
         print('starting scan...')
-        self.bt.gap_scan(self.ms_scan, 10000, 5)
+        self.bt.gap_scan(self.ms_scan, 350, 150)
         time.sleep_ms(self.ms_scan)
         
 
@@ -270,10 +273,10 @@ class CoordinatorClass:  # main class, that manages everything
         
     def start(self):
         #wifi info
-        self.ssid = 'Adassim'
-        self.password = '20406080'
-        #self.ssid = 'Needham'
-        #self.password = 'gr2Hoyer'
+        #self.ssid = 'Adassim'
+        #self.password = '20406080'
+        self.ssid = 'Needham'
+        self.password = 'gr2Hoyer'
 
         #BleScanner class
         ms_scan = 10000  # (ms) - Scan for 10s (at 100% duty cycle)
