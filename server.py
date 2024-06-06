@@ -14,7 +14,7 @@ from CalculateCoords import CalculateCoords
 
 """
 Central device bluetooth mac address:
-- 1C:9D:C2:35:A8:52
+- 1C:9D:C2:35:A8:52 - solo 1
 """
 
 
@@ -43,14 +43,14 @@ class Manager:
 
     def start(self):
         # 1. GuiManager
-        self.model_address = 'Models/test_model.json'
+        self.model_address = 'Models/cyber_class_model.json'
         self.gui_object = GuiManager(self.model_address)
 
         # RssiData
         self.rssi_data_obj = RssiData()
 
-        # Server_Communication
-        self.peripheral_device_count = 1  # amount of peripheral devices required
+        # Serve r_Communication
+        self.peripheral_device_count = 3  # amount of peripheral devices required
         self.server_object = ServerCommunication(self.peripheral_device_count, self.gui_object, self.rssi_data_obj)
         server_thread = threading.Thread(target=self.server_object.start)
         self.threads.append(server_thread)

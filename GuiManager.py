@@ -1,6 +1,7 @@
 from customtkinter import *
 import json
 
+
 class GuiManager:
     # in charge of ModelPlugNPlay and the gui
     def __init__(self, address):
@@ -20,6 +21,7 @@ class GuiManager:
         self.map_canvas = None
         self.canvas_width = None
         self.canvas_height = None
+        self.central_circle_id = None  # holds the central device circle object
 
         # info screen
         self.info_screen_dimensions = []  # size of the information screen
@@ -219,6 +221,21 @@ class GuiManager:
             x, y = beacon['coordinates'][0], beacon['coordinates'][1]
             r = 15  # set radius size
             self.draw_circle(x, y, r, 'white')
+
+    def draw_central(self, x, y, r, fill_color):
+        """
+        Draws or updates a circle on the canvas according to the parameters given.
+        """
+        if self.central_circle_id is None:
+            # Create the circle if it doesn't exist
+            self.central_circle_id = self.map_canvas.create_oval(x - r, y - r, x + r, y + r, width=2, fill=fill_color)
+        else:
+            # Update the circle's coordinates if it exists
+            self.map_canvas.coords(self.central_circle_id, x - r, y - r, x + r, y + r)
+            self.map_canvas.itemconfig(self.central_circle_id, fill=fill_color)  # Update the color if needed
+
+    def update_central_position(self, x, y, r, fill_color):
+        self.map_canvas.after(0, self.draw_central, x, y, r, fill_color)
 
     def draw_info_screen(self):
         """

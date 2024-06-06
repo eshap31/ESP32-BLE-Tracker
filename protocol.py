@@ -22,7 +22,6 @@ class Protocol:
 
     @staticmethod
     def get_msg(data):
-        print('getting data')
         if len(data) == 0:
             return False, 'empty'
         elif len(data) > 0:
@@ -33,12 +32,9 @@ class Protocol:
 
     @staticmethod
     def get_serialized_data(recvd_data):
-        print('getting serialized data')
         data = Protocol.get_msg(recvd_data)
-        print('checking serialized data in get_serialized_data')
         if data[0]:
             try:
-                print('getting data in serialized data')
                 data = json.loads(data[1])
                 return True, data
             except json.JSONDecodeError as e:

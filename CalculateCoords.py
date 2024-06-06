@@ -6,12 +6,12 @@ class CalculateCoords:
         self.gui_obj = gui_obj
 
         # rssi data
-        self.rate = 1  # every 1 second, the self.curr and self.lists will be updated
+        self.rate = 1  # every 1 second, the self.curr and self.back will be updated
         self.rssi_data_obj = rssi_data_obj
         self.back_lst = None
 
         # trilateration
-        self.n = 2  # environment variable
+        self.n = 3.5  # environment variable - play around with it
         self.tx_power = -45  # one meter rssi of the solo
 
     def get_top_three_rssi(self, back_lst):
@@ -23,6 +23,7 @@ class CalculateCoords:
         print(f'in top three rssi, back list {back_lst}')
         # TODO update the information screen, with values in back_lst
         top_three = []
+
         for key, val in back_lst.items():
             # add to list
             top_three.append((key, val))
@@ -31,6 +32,7 @@ class CalculateCoords:
             # if there are more than three values in the list, remove the smallest one:
             if len(top_three) > 3:
                 top_three.pop()
+
         self.calculate_distances(top_three)
 
     def get_coordinates(self, mac_addr):
@@ -86,17 +88,13 @@ class CalculateCoords:
         x = (C * E - F * B) / (E * A - B * D)
         y = (C * D - A * F) / (B * D - A * E)
         print(f'coordinates are: {x, y}')
-        # TODO call the function that places the central device on the map
-        self.gui_obj.draw_circle(x, y, 15, 'red')
+        self.gui_obj.update_central_position(x, y, 15, 'red')
 
     def update_rssi_data_list(self):
-        i = 0
         while True:
-            print(i)
-            i += 1
             time.sleep(self.rate)
             back_lst = self.rssi_data_obj.Get_Back()
-            if len(back_lst) >= 3:
+            if len(back_lst.keys()) >= 3:
                 self.get_top_three_rssi(back_lst)
             else:
                 continue
