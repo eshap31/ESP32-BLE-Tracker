@@ -54,7 +54,7 @@ class CalculateCoords:
         for t in rssi_list:
             # distance calculation
             rssi = t[1]
-            distance = int(10 ** ((self.tx_power - rssi) / (10 * self.n)))
+            distance = (10 ** ((self.tx_power - rssi) / (10 * self.n))) * self.gui_obj.ratio  # fit to map dimensions
             # getting the coordinates of the peripheral device that made the scan
             mac_addr = t[0]
             peripheral_coordinates = self.get_coordinates(mac_addr)
@@ -87,8 +87,10 @@ class CalculateCoords:
 
         x = (C * E - F * B) / (E * A - B * D)
         y = (C * D - A * F) / (B * D - A * E)
-        print(f'coordinates are: {x, y}')
-        self.gui_obj.update_central_position(x, y, 15, 'red')
+        #print(f'distances are: {distances} :: reference points: {reference_points} :: coordinates are: {x, y}')
+        if x < self.gui_obj.canvas_width and y < self.gui_obj.canvas_height:
+            print('plotting on screen')
+            self.gui_obj.update_central_position(x, y, 15, 'red')
 
     def update_rssi_data_list(self):
         while True:

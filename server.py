@@ -43,7 +43,7 @@ class Manager:
 
     def start(self):
         # 1. GuiManager
-        self.model_address = 'Models/cyber_class_model.json'
+        self.model_address = 'Models/eitams_room_model.json'
         self.gui_object = GuiManager(self.model_address)
 
         # RssiData

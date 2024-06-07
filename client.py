@@ -134,7 +134,7 @@ class BleScanner:
         self.back = self.curr
         self.curr = (self.curr + 1) % 2
         
-    def bt_irq(self, event, data): # called when ble event occures
+    def bt_irq(self, event, data,alpha=0.1): # called when ble event occures
         """ update self.devs[self.curr] dictionary """
         if event == self._IRQ_SCAN_RESULT:
             # A single scan result.
@@ -142,11 +142,11 @@ class BleScanner:
             decoded_address = ':'.join(['%02X' % i for i in addr])
             
             # Do the EMA filter on the rssi - alpha = 0.1
-            filtered_rssi = alpha * rssi[-1] + (1 - alpha) * rssi[-1]
+            filtered_rssi = alpha * rssi + (1 - alpha) * rssi
             
             # check if the device was already picked up
             if self.devs[self.curr].get(decoded_address) is None:  # new device
-                self.devs[self.curr][decoded_address] = (rssi, self.ttl)  # update the curr dictionary
+                self.devs[self.curr][decoded_address] = (filtered_rssi, self.ttl)  # update the curr dictionary
             
             else:  # device already been picked up
                 ttl = self.devs[self.curr][decoded_address][1]
@@ -154,7 +154,7 @@ class BleScanner:
                     self.devs[self.curr].pop(decoded_address)  # remove device from dictionary, because ttl got to 0
                 else:
                     ttl -= 1
-                    self.devs[self.curr][decoded_address] = (rssi, ttl)  # update the curr dictionary, add check ttl
+                    self.devs[self.curr][decoded_address] = (filtered_rssi, ttl)  # update the curr dictionary, add check ttl
                 
                 
         elif event == self._IRQ_SCAN_DONE:
@@ -163,7 +163,7 @@ class BleScanner:
             """
             # Scan duration finished or manually stopped.
             try:
-                self.bt.gap_scan(self.ms_scan, 350, 150)  # start a new scan
+                self.bt.gap_scan(self.ms_scan, 10000, 5)  # start a new scan
             except KeyboardInterrupt:  # in case server was stopped manually
                 print('manually stopped')
                 return
@@ -175,14 +175,14 @@ class BleScanner:
         self.bt.active(True)
         print("BLE Active:", self.bt.active())
         print('starting scan...')
-        self.bt.gap_scan(self.ms_scan, 350, 150)
+        self.bt.gap_scan(self.ms_scan, 10000, 5)
         time.sleep_ms(self.ms_scan)
         
 
 class Networking:
     def __init__(self, esp32_peripheral, rate):
         self.port = 5005
-        self.server_ip = '172.16.1.118'
+        self.server_ip = '10.100.102.28'
         self.server_tuple = (self.server_ip, self.port)
         self.client_socket = None
         self.mac_address = None
@@ -195,6 +195,7 @@ class Networking:
     def wait_for_server_msg(self):  # wait for stop message from server
         while True:
             """ change """
+            time.sleep(0.1)
             try:
                 data, addr = self.client_socket.recvfrom(1024)
                 print('----')

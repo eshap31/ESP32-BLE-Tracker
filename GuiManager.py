@@ -14,6 +14,7 @@ class GuiManager:
         self.edges = []
         self.beacons = []
         self.mac_list = []  # list of all the beacon's wifi mac address
+        self.ratio = None
 
         # map
         self.map_dimensions = None
@@ -84,9 +85,9 @@ class GuiManager:
         new_ratio = new_width / model_coords[
             0]  # multiply each edge/beacon coordinate by this number to get the new coordinates
         self.map_dimensions = (int(new_width), int(new_height))
-        return new_ratio
+        self.ratio = new_ratio
 
-    def model_to_map(self, ratio):
+    def model_to_map(self):
         """
         - function gets the ratio between the model and the map
         - function changes the coordinates of the edges and beacons to fit the map, using the ratio
@@ -94,14 +95,14 @@ class GuiManager:
         # using the ratio, create the new coordinates
         new_edges = []
         for edge in self.edges:
-            edge['start'] = [int(num * ratio) for num in edge['start']]
-            edge['end'] = [int(num * ratio) for num in edge['end']]
+            edge['start'] = [int(num * self.ratio) for num in edge['start']]
+            edge['end'] = [int(num * self.ratio) for num in edge['end']]
             new_edges.append(edge)
         self.edges = new_edges
 
         new_beacons = []
         for beacon in self.beacons:
-            beacon['coordinates'] = [int(num * ratio) for num in beacon['coordinates']]
+            beacon['coordinates'] = [int(num * self.ratio) for num in beacon['coordinates']]
             new_beacons.append(beacon)
         self.beacons = new_beacons
 
@@ -122,9 +123,9 @@ class GuiManager:
         print(width, height)
         max_coordinates = self.get_max_coords()
         print(max_coordinates)
-        ratio = self.create_map_size((width, height), max_coordinates)
-        print(f'ratio: {ratio}')
-        self.model_to_map(ratio)
+        self.create_map_size((width, height), max_coordinates)
+        print(f'ratio: {self.ratio}')
+        self.model_to_map()
         print(f'map dimensions: {self.map_dimensions}')
 
     def calculate_window_dimensions(self):
