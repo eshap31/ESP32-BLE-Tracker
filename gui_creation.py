@@ -11,12 +11,12 @@ class Home_Screen:
         self.root.geometry('600x600')
         self.root.title('Home Screen')
         self.root.resizable(False, False)  # make it so that you cant resize the window
-        #self.root.configure(fg_color='#96036d')  # set background
+        self.root.iconbitmap('images/favicon.ico')
         set_default_color_theme(
             'dark-blue')  # TODO change color theme to custom one: https://customtkinter.tomschimansky.com/documentation/color
 
         # logo
-        logo_image = CTkImage(dark_image=Image.open("gui/logo.png"),
+        logo_image = CTkImage(dark_image=Image.open("images/logo.png"),
                               size=(350, 350))
         self.logo_label = CTkLabel(self.root, image=logo_image, text='')
         self.logo_label.place(x=125, y=50)
@@ -28,8 +28,9 @@ class Home_Screen:
         login_button = CTkButton(self.root, text='Login', height=30, width=50, command=self.login)
         signup_button = CTkButton(self.root, text='Signup', height=30, width=50, command=self.signup)
 
-        github_logo_image = CTkImage(dark_image=Image.open("gui/github_logo.png"), size=(30, 30))
+        github_logo_image = CTkImage(dark_image=Image.open("images/github_logo.png"), size=(30, 30))
         github_button = CTkButton(self.root, image=github_logo_image, command=self.open_github, width=30, height=30, fg_color='gray95', hover_color='gray95', text='')
+        # TODO change github logo to a different color
 
         # place the buttons
         login_button.place(x=225, y=435)
