@@ -1,9 +1,6 @@
 import json
-import os
-
 
 class Protocol:
-    LENGTH_FIELD_SIZE = 5
 
     @staticmethod
     def create_msg(data):

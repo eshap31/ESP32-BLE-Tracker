@@ -150,6 +150,8 @@ class BleScanner:
             
             else:  # device already been picked up
                 ttl = self.devs[self.curr][decoded_address][1]
+                # TODO call function that checks the entire dictionary, and if the device wasnt picked up, take 1 of the ttl, if it was picked up, refresh ttl to 5
+                # whatever device that its ttl is not five, decrease 1 from the ttl
                 if ttl == 0:  # take out of the dictionary
                     self.devs[self.curr].pop(decoded_address)  # remove device from dictionary, because ttl got to 0
                 else:
