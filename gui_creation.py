@@ -1,13 +1,15 @@
 from customtkinter import *
 from PIL import Image
+from db_testing import DbManager
 
 
 # color: 96036d
-# TODO start working with an sql database
+# TODO implement json file as databse
 # TODO add create account screen that is opened only when correct admin credentials are entered
 
 class Home_Screen:
     def __init__(self):
+        self.enter_button = None
         self.change_screens_button = None
         self.password_entry = None
         self.username_entry = None
@@ -21,6 +23,9 @@ class Home_Screen:
         self.logo_label = None
 
         self.temporary_widgets = []  # list of temporary widgets that will be destroyed every time you move onto a new screen
+
+        # DbManager
+        self.db_manager = DbManager('admin', 'adminpass')
 
     def create_buttons(self):
         # signup - have to enter the admin password to create a new account
@@ -54,7 +59,9 @@ class Home_Screen:
                                        placeholder_text_color='gray', text_color='black')
         self.login_button = CTkButton(self.root, text='Login', height=30, width=50, hover_color='#3a3a5e',
                                       fg_color='white',
-                                      command=self.check_user_login, text_color='black')
+                                      command=lambda: self.check_user_login(self.username_entry.get(),
+                                                                            self.password_entry.get()),
+                                      text_color='black')
         self.change_screens_button = CTkButton(self.root, text='Dont have an account? Register', height=30, width=200,
                                                hover_color='#3a3a5e', fg_color='white',
                                                command=self.signup, text_color='black')
@@ -80,28 +87,42 @@ class Home_Screen:
                                        placeholder_text_color='gray', text_color='black')
         self.password_entry = CTkEntry(self.root, placeholder_text='admin password', width=230, fg_color='white',
                                        placeholder_text_color='gray', text_color='black')
-        self.login_button = CTkButton(self.root, text='Enter', height=30, width=50, hover_color='#3a3a5e',
+        self.enter_button = CTkButton(self.root, text='Enter', height=30, width=50, hover_color='#3a3a5e',
                                       fg_color='white',
-                                      command=self.check_admin_login, text_color='black')
+                                      command=lambda: self.check_admin_login(self.username_entry.get(),
+                                                                             self.password_entry.get()),
+                                      text_color='black')
         self.change_screens_button = CTkButton(self.root, text='Already have an account? Login', height=30, width=200,
                                                hover_color='#3a3a5e', fg_color='white',
                                                command=self.login, text_color='black')
 
-        self.temporary_widgets.extend([self.signup_label, self.username_entry, self.password_entry, self.login_button])
+        self.temporary_widgets.extend([self.signup_label, self.username_entry, self.password_entry, self.enter_button])
 
         # place on screen
         self.signup_label.pack(side='top', pady=45)
         self.username_entry.place(x=185, y=150)
         self.password_entry.place(x=185, y=215)
-        self.login_button.place(x=275, y=280)
+        self.enter_button.place(x=275, y=280)
         self.change_screens_button.place(x=200, y=330)
 
-    def check_user_login(self):
+    def check_user_login(self, username, password):
         print('checking user login')
+        status = self.db_manager.login(username, password)
+        if status:
+            print('logged in! moving on to the the main screen!')
+        else:
+            # TODO display message on screen
+            print('login not available, try creating an account, or using a different login')
 
-    def check_admin_login(self):
+    def check_admin_login(self, username, password):
         print('checking admin login')
         # TODO check if correct admin username and password, if yes, go to create account, if not display message
+        status = self.db_manager.signup(username, password)
+        if not status:  # if the admin credentials are incorrect
+            print('admin login incorrect')
+        else:  # if the admin credentials are correct
+            # TODO create screen that allows user to input new username and password
+            print('admin credentials entered successfully')
 
     def check_created_info(self):  # checks if the username that the admin put in is available
         print('checking created login info')
