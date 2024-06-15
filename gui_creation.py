@@ -3,14 +3,15 @@ from PIL import Image
 
 
 # color: 96036d
-# TODO change widgets to self
-# TODO add "Already have an account? Login" button
-# TODO destroy buttons when going from login to signup screens
 # TODO start working with an sql database
 # TODO add create account screen that is opened only when correct admin credentials are entered
 
 class Home_Screen:
     def __init__(self):
+        self.change_screens_button = None
+        self.password_entry = None
+        self.username_entry = None
+        self.signup_label = None
         self.root = None
 
         self.login_button = None
@@ -18,6 +19,8 @@ class Home_Screen:
         self.signup_button = None
         self.github_logo_image = None
         self.logo_label = None
+
+        self.temporary_widgets = []  # list of temporary widgets that will be destroyed every time you move onto a new screen
 
     def create_buttons(self):
         # signup - have to enter the admin password to create a new account
@@ -33,6 +36,7 @@ class Home_Screen:
                                        width=30, height=30,
                                        text='', hover_color='#3a3a5e', fg_color='white', text_color='black')
         # TODO change github logo to a different color
+        self.temporary_widgets.extend([self.login_button, self.signup_button])
 
         # place the buttons
         self.login_button.place(x=225, y=375)
@@ -44,49 +48,60 @@ class Home_Screen:
         # TODO change to actual login
         self.destroy_home_screen()
         # create widgets
-        username_entry = CTkEntry(self.root, placeholder_text='Username', width=230, fg_color='white',
-                                  placeholder_text_color='gray', text_color='black')
-        password_entry = CTkEntry(self.root, placeholder_text='Password', width=230, fg_color='white',
-                                  placeholder_text_color='gray', text_color='black')
-        login_button = CTkButton(self.root, text='Login', height=30, width=50, hover_color='#3a3a5e', fg_color='white',
-                                 command=self.check_user_login, text_color='black')
-        change_screens_button = CTkButton(self.root, text='Dont have an account? Register', height=30, width=200,
-                                          hover_color='#3a3a5e', fg_color='white',
-                                          command=self.signup, text_color='black')
+        self.username_entry = CTkEntry(self.root, placeholder_text='Username', width=230, fg_color='white',
+                                       placeholder_text_color='gray', text_color='black')
+        self.password_entry = CTkEntry(self.root, placeholder_text='Password', width=230, fg_color='white',
+                                       placeholder_text_color='gray', text_color='black')
+        self.login_button = CTkButton(self.root, text='Login', height=30, width=50, hover_color='#3a3a5e',
+                                      fg_color='white',
+                                      command=self.check_user_login, text_color='black')
+        self.change_screens_button = CTkButton(self.root, text='Dont have an account? Register', height=30, width=200,
+                                               hover_color='#3a3a5e', fg_color='white',
+                                               command=self.signup, text_color='black')
+
+        self.temporary_widgets.extend(
+            [self.username_entry, self.password_entry, self.login_button, self.change_screens_button])
 
         # place on screen
-        username_entry.place(x=185, y=150)
-        password_entry.place(x=185, y=215)
-        login_button.place(x=275, y=280)
-        change_screens_button.place(x=200, y=330)
+        self.username_entry.place(x=185, y=150)
+        self.password_entry.place(x=185, y=215)
+        self.login_button.place(x=275, y=280)
+        self.change_screens_button.place(x=200, y=330)
 
     def signup(self):
         print('signup')
-        # TODO change to actuall login
+        # TODO change to actual login
         self.destroy_home_screen()
 
         # create widgets
-        signup_label = CTkLabel(self.root, text='Enter admin credentials\rin order to create an account',
-                                font=('Helvetica', 20))
-        username_entry = CTkEntry(self.root, placeholder_text='admin username', width=230, fg_color='white',
-                                  placeholder_text_color='gray', text_color='black')
-        password_entry = CTkEntry(self.root, placeholder_text='admin password', width=230, fg_color='white',
-                                  placeholder_text_color='gray', text_color='black')
-        login_button = CTkButton(self.root, text='Enter', height=30, width=50, hover_color='#3a3a5e', fg_color='white',
-                                 command=self.check_admin_login, text_color='black')
+        self.signup_label = CTkLabel(self.root, text='Enter admin credentials\rin order to create an account',
+                                     font=('Helvetica', 20))
+        self.username_entry = CTkEntry(self.root, placeholder_text='admin username', width=230, fg_color='white',
+                                       placeholder_text_color='gray', text_color='black')
+        self.password_entry = CTkEntry(self.root, placeholder_text='admin password', width=230, fg_color='white',
+                                       placeholder_text_color='gray', text_color='black')
+        self.login_button = CTkButton(self.root, text='Enter', height=30, width=50, hover_color='#3a3a5e',
+                                      fg_color='white',
+                                      command=self.check_admin_login, text_color='black')
+        self.change_screens_button = CTkButton(self.root, text='Already have an account? Login', height=30, width=200,
+                                               hover_color='#3a3a5e', fg_color='white',
+                                               command=self.login, text_color='black')
+
+        self.temporary_widgets.extend([self.signup_label, self.username_entry, self.password_entry, self.login_button])
 
         # place on screen
-        signup_label.pack(side='top', pady=45)
-        username_entry.place(x=185, y=150)
-        password_entry.place(x=185, y=215)
-        login_button.place(x=275, y=280)
+        self.signup_label.pack(side='top', pady=45)
+        self.username_entry.place(x=185, y=150)
+        self.password_entry.place(x=185, y=215)
+        self.login_button.place(x=275, y=280)
+        self.change_screens_button.place(x=200, y=330)
 
     def check_user_login(self):
         print('checking user login')
 
     def check_admin_login(self):
         print('checking admin login')
-        #TODO check if correct admin username and password, if yes, go to create account, if not display message
+        # TODO check if correct admin username and password, if yes, go to create account, if not display message
 
     def check_created_info(self):  # checks if the username that the admin put in is available
         print('checking created login info')
@@ -97,10 +112,9 @@ class Home_Screen:
         webbrowser.open_new("https://github.com/eshap31")
 
     def destroy_home_screen(self):
-        self.logo_label.destroy()
-        self.signup_button.destroy()
-        self.login_button.destroy()
-        # self.github_button.destroy()
+        for widget in self.temporary_widgets:
+            widget.destroy()
+            self.temporary_widgets = []
 
     def start(self):
         # initialize window
@@ -110,14 +124,15 @@ class Home_Screen:
         self.root.title('Home Screen')
         self.root.resizable(False, False)  # make it so that you cant resize the window
         self.root.iconbitmap('images/favicon.ico')
-        set_default_color_theme(
-            'dark-blue')  # TODO change color theme to custom one: https://customtkinter.tomschimansky.com/documentation/color
+        set_default_color_theme('dark-blue')
+        # TODO change color theme to custom one: https://customtkinter.tomschimansky.com/documentation/color
 
         # logo
         logo_image = CTkImage(dark_image=Image.open("images/logo.png"),
                               size=(350, 350))
         self.logo_label = CTkLabel(self.root, image=logo_image, text='')
         self.logo_label.place(x=125, y=50)
+        self.temporary_widgets.append(self.logo_label)
         self.create_buttons()
 
         self.root.mainloop()
