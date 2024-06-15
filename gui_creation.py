@@ -4,8 +4,6 @@ from db_testing import DbManager
 
 
 # color: 96036d
-# TODO implement json file as databse
-# TODO add create account screen that is opened only when correct admin credentials are entered
 
 class Home_Screen:
     def __init__(self):
@@ -14,6 +12,8 @@ class Home_Screen:
         self.password_entry = None
         self.username_entry = None
         self.signup_label = None
+        self.login_label = None
+
         self.root = None
 
         self.login_button = None
@@ -22,7 +22,8 @@ class Home_Screen:
         self.github_logo_image = None
         self.logo_label = None
 
-        self.temporary_widgets = []  # list of temporary widgets that will be destroyed every time you move onto a new screen
+        self.placed_widgets = []  # list of temporary widgets that will be destroyed every time you move onto a new screen
+        self.packed_widgets = []
 
         # DbManager
         self.db_manager = DbManager('admin', 'adminpass')
@@ -41,7 +42,7 @@ class Home_Screen:
                                        width=30, height=30,
                                        text='', hover_color='#3a3a5e', fg_color='white', text_color='black')
         # TODO change github logo to a different color
-        self.temporary_widgets.extend([self.login_button, self.signup_button])
+        self.placed_widgets.extend([self.login_button, self.signup_button])
 
         # place the buttons
         self.login_button.place(x=225, y=375)
@@ -49,10 +50,10 @@ class Home_Screen:
         self.github_button.place(x=520, y=10)
 
     def login(self):
-        print('login')
-        # TODO change to actual login
         self.destroy_home_screen()
         # create widgets
+        self.login_label = CTkLabel(self.root, text='Login',
+                                    font=('Helvetica', 20))
         self.username_entry = CTkEntry(self.root, placeholder_text='Username', width=230, fg_color='white',
                                        placeholder_text_color='gray', text_color='black')
         self.password_entry = CTkEntry(self.root, placeholder_text='Password', width=230, fg_color='white',
@@ -66,18 +67,18 @@ class Home_Screen:
                                                hover_color='#3a3a5e', fg_color='white',
                                                command=self.signup, text_color='black')
 
-        self.temporary_widgets.extend(
+        self.placed_widgets.extend(
             [self.username_entry, self.password_entry, self.login_button, self.change_screens_button])
+        self.packed_widgets.extend([self.login_label])
 
         # place on screen
+        self.login_label.pack(side='top', pady=45)
         self.username_entry.place(x=185, y=150)
         self.password_entry.place(x=185, y=215)
         self.login_button.place(x=275, y=280)
         self.change_screens_button.place(x=200, y=330)
 
     def signup(self):
-        print('signup')
-        # TODO change to actual login
         self.destroy_home_screen()
 
         # create widgets
@@ -96,7 +97,9 @@ class Home_Screen:
                                                hover_color='#3a3a5e', fg_color='white',
                                                command=self.login, text_color='black')
 
-        self.temporary_widgets.extend([self.signup_label, self.username_entry, self.password_entry, self.enter_button])
+        self.placed_widgets.extend(
+            [self.username_entry, self.password_entry, self.enter_button, self.change_screens_button])
+        self.packed_widgets.extend([self.signup_label])
 
         # place on screen
         self.signup_label.pack(side='top', pady=45)
@@ -106,26 +109,53 @@ class Home_Screen:
         self.change_screens_button.place(x=200, y=330)
 
     def check_user_login(self, username, password):
-        print('checking user login')
         status = self.db_manager.login(username, password)
         if status:
-            print('logged in! moving on to the the main screen!')
+            self.user_in()
         else:
-            # TODO display message on screen
-            print('login not available, try creating an account, or using a different login')
+            self.login_label.pack_forget()
+            self.packed_widgets = []
+            self.login_label.configure(text='Incorrect username or password', text_color='red')
+            self.packed_widgets.extend([self.login_label])
+            self.login_label.pack(side='top', pady=45)
 
     def check_admin_login(self, username, password):
-        print('checking admin login')
-        # TODO check if correct admin username and password, if yes, go to create account, if not display message
         status = self.db_manager.signup(username, password)
         if not status:  # if the admin credentials are incorrect
-            print('admin login incorrect')
+            self.signup_label.pack_forget()
+            self.signup_label.configure(text='admin credentials are incorrect, try again', text_color='red')
+            self.packed_widgets.extend([self.signup_label])
+            self.signup_label.pack(side='top', pady=35)
         else:  # if the admin credentials are correct
-            # TODO create screen that allows user to input new username and password
-            print('admin credentials entered successfully')
+            self.destroy_home_screen()
+            self.username_entry.delete(0, 'end')
+            self.password_entry.delete(0, 'end')
+            self.username_entry.configure(placeholder_text='Username')
+            self.password_entry.configure(placeholder_text='Password')
+            self.signup_label.configure(text='Choose a username and a password', text_color='white')
+            self.enter_button.configure(text='Create account', width=90, command=lambda: self.check_created_user(self.username_entry.get(), self.password_entry.get()))
 
-    def check_created_info(self):  # checks if the username that the admin put in is available
-        print('checking created login info')
+            self.placed_widgets.extend(
+                [self.username_entry, self.password_entry, self.enter_button, self.change_screens_button])
+            self.packed_widgets.extend([self.signup_label])
+
+            self.signup_label.pack(side='top', pady=45)
+            self.username_entry.place(x=185, y=150)
+            self.password_entry.place(x=185, y=215)
+            self.enter_button.place(x=255, y=280)
+            self.change_screens_button.place(x=200, y=330)
+
+    def check_created_user(self, username, password):  # checks if the username that the admin put in is available
+        status = self.db_manager.create_account(username, password)  # try to create the account with the inputted credentials
+        if not status:
+            self.signup_label.pack_forget()
+            self.packed_widgets = []
+            self.signup_label.configure(text='Username already taken, try another', text_color='red')
+            self.packed_widgets.extend([self.signup_label])
+            self.signup_label.pack(side='top', pady=45)
+
+        else:
+            self.user_in()
 
     @staticmethod
     def open_github():
@@ -133,9 +163,18 @@ class Home_Screen:
         webbrowser.open_new("https://github.com/eshap31")
 
     def destroy_home_screen(self):
-        for widget in self.temporary_widgets:
-            widget.destroy()
-            self.temporary_widgets = []
+        for widget in self.placed_widgets:
+            widget.place_forget()
+        self.placed_widgets = []
+
+        for widget in self.packed_widgets:
+            widget.pack_forget()
+        self.packed_widgets = []
+
+    def user_in(self):
+        self.destroy_home_screen()
+        waiting_for_system_label = CTkLabel(self.root, text='Waiting for peripheral devices to connect\rand for the central device to start advertising...\r\nStart tracking when you are ready, and when system is ready.', text_color='white', font=('Helvetica', 20))
+        waiting_for_system_label.pack(side='top', pady=75)
 
     def start(self):
         # initialize window
@@ -153,7 +192,7 @@ class Home_Screen:
                               size=(350, 350))
         self.logo_label = CTkLabel(self.root, image=logo_image, text='')
         self.logo_label.place(x=125, y=50)
-        self.temporary_widgets.append(self.logo_label)
+        self.placed_widgets.append(self.logo_label)
         self.create_buttons()
 
         self.root.mainloop()

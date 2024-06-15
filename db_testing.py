@@ -51,7 +51,6 @@ class DbManager:
 
         if hashed_username in users[0] or hashed_username in users[
             1]:  # Check admin and user data for existing username
-            print("Username already exists.")
             return False
 
         users[1][hashed_username] = hashed_password
@@ -118,21 +117,19 @@ class DbManager:
 
         return True
 
-    def create_account(self, users):
+    def create_account(self, username, password):
 
-        username = input("Enter username: ")
-        password = input("Enter password: ")
+        users = self._read_users()
 
         # Check if username already exists in admin or user data
         hashed_username = self.hash_value(username)
         if hashed_username in users[0] or hashed_username in users[1]:
-            print("Username already exists.")
-            return
+            return False
 
         if self.store_user(username, password):
-            print("Signup successful!")
+            return True
         else:
-            print("Signup failed. Username may already exist or admin credentials were incorrect.")
+            return False
 
     def login(self, username, password):
         """
@@ -140,10 +137,8 @@ class DbManager:
         """
 
         if self.authenticate_user(username, password):
-            print("Login successful!")
             return True
         else:
-            print("Login failed. Incorrect username or password.")
             return False
 
     def run(self):
@@ -162,5 +157,3 @@ class DbManager:
                 self.login()
             else:
                 print("Invalid choice. Please enter 1 or 2.")
-
-
