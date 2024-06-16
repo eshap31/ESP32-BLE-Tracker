@@ -1,10 +1,12 @@
+import time
+
 from customtkinter import *
 import json
 
 
 class GuiManager:
     # in charge of ModelPlugNPlay and the gui
-    def __init__(self, address):
+    def __init__(self, address, root):
         # ready variables
         self.server_ready = False
         self.coordinate_calculator_ready = False
@@ -31,7 +33,10 @@ class GuiManager:
 
         # window
         self.window_dimensions = []
-        self.root = CTk()
+        self.root = root
+        self.can_start= False
+
+
 
     def get_map_size(self):
         """
@@ -155,7 +160,7 @@ class GuiManager:
 
         # initialize info screen canvas, that will fit the info screen's portion of the window
         self.info_screen_canvas = CTkCanvas(self.root, width=self.info_screen_dimensions[0],
-                                            height=self.info_screen_dimensions[1], bg='#95036d')
+                                            height=self.info_screen_dimensions[1], bg='#051D41')
         self.info_screen_canvas.pack(side='right', fill='both', expand=True)
 
         # update both canvases
@@ -238,10 +243,19 @@ class GuiManager:
     def update_central_position(self, x, y, r, fill_color):
         self.map_canvas.after(0, self.draw_central, x, y, r, fill_color)
 
+    def ready_to_track(self):
+        button = CTkButton(self.root, text='Start', height=30, width=50, hover_color='#3a3a5e', fg_color='white', text_color='black', command=self.allow_start)
+        button.place(x=275, y=300)
+
+    def allow_start(self):
+        self.can_start = True
+
     def draw_info_screen(self):
         """
         - draw the initial info screen
         """
+        label = CTkLabel(self.info_screen_canvas, text='Info Screen', font=('Helvetica', 20), width=100)
+        label.place(x=180, y=40)
         return
 
     def create_window(self):
@@ -253,13 +267,23 @@ class GuiManager:
         self.draw_info_screen()
 
     def start(self):
+        while not self.can_start:
+            time.sleep(0.01)
+
+        # destroy old window
+        self.root.destroy()
+
+        # create tje mew window
+        self.root = CTk()
+
         # onboard model, and modify fit computer
         self.initialize_map()
 
         # create window - place beacons, edges, and add divider between map and info screens
         self.create_window()
 
-        self.ready = True
-
         # test it out
         self.root.mainloop()
+
+
+#TODO - try passing one of the classes as an object to the other, in order for the mainloop to be in the main thread

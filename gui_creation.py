@@ -6,7 +6,7 @@ from db_testing import DbManager
 # color: 96036d
 
 class Home_Screen:
-    def __init__(self):
+    def __init__(self, admin_username, admin_password):
         self.enter_button = None
         self.change_screens_button = None
         self.password_entry = None
@@ -26,7 +26,7 @@ class Home_Screen:
         self.packed_widgets = []
 
         # DbManager
-        self.db_manager = DbManager('admin', 'adminpass')
+        self.db_manager = DbManager(admin_username, admin_password)
 
     def create_buttons(self):
         # signup - have to enter the admin password to create a new account

@@ -93,6 +93,7 @@ class CalculateCoords:
             self.gui_obj.update_central_position(x, y, 15, 'red')
 
     def update_rssi_data_list(self):
+        self.gui_obj.ready_to_track()  # allow user to start tracking
         while True:
             time.sleep(self.rate)
             back_lst = self.rssi_data_obj.Get_Back()
