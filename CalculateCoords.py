@@ -93,14 +93,19 @@ class CalculateCoords:
             self.gui_obj.update_central_position(x, y, 15, 'red')
 
     def update_rssi_data_list(self):
+        """  testing start """
+        while not self.gui_obj.coordinate_calculator_ready:
+            time.sleep(0.1)
         self.gui_obj.ready_to_track()  # allow user to start tracking
-        while True:
-            time.sleep(self.rate)
-            back_lst = self.rssi_data_obj.Get_Back()
-            if len(back_lst.keys()) >= 3:
-                self.get_top_three_rssi(back_lst)
-            else:
-                continue
+        """ testing end """
+
+        # while True:
+        #     time.sleep(self.rate)
+        #     back_lst = self.rssi_data_obj.Get_Back()
+        #     if len(back_lst.keys()) >= 3:
+        #         self.get_top_three_rssi(back_lst)
+        #     else:
+        #         continue
 
     def start(self):
         while not self.gui_obj.coordinate_calculator_ready:

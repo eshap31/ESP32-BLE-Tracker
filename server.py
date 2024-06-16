@@ -1,10 +1,9 @@
 import threading
 
-from GuiManager import GuiManager
 from RssiData import RssiData
 from ServerCommunication import ServerCommunication
 from CalculateCoords import CalculateCoords
-from gui_creation import Home_Screen
+from GuiFile import Gui
 
 """
 Central device bluetooth mac address:
@@ -22,11 +21,12 @@ class Manager:
         # ModelPlugNPlay
         self.model_address = None
 
-        # Main Screen
-        self.main_screen_obj = None
+        # Gui
+        self.gui_obj = None
 
-        # Home Screen
-        self.home_screen_obj = None
+        self.admin_username = None
+        self.admin_password = None
+
         # _______________________
 
         # RssiData
@@ -41,29 +41,30 @@ class Manager:
     def start(self):
         # 1. GuiManager
         self.model_address = 'Models/eitams_room_model.json'
-        self.home_screen_obj = Home_Screen('admin', 'adminpass')
-        self.main_screen_obj = GuiManager(self.model_address, self.home_screen_obj.root)
+        self.admin_username = 'admin'
+        self.admin_password = 'adminpass'
+        self.gui_obj = Gui(self.admin_username, self.admin_password, self.model_address)
 
         # RssiData
         self.rssi_data_obj = RssiData()
 
-        # Serve r_Communication
+        # Server_Communication
         self.peripheral_device_count = 3  # amount of peripheral devices required
-        self.server_object = ServerCommunication(self.peripheral_device_count, self.main_screen_obj, self.rssi_data_obj)
+        self.server_object = ServerCommunication(self.peripheral_device_count, self.gui_obj, self.rssi_data_obj)
         server_thread = threading.Thread(target=self.server_object.start)
         self.threads.append(server_thread)
 
         # CalculateCoords
-        self.coordinate_calculator = CalculateCoords(self.main_screen_obj, self.rssi_data_obj)
+        self.coordinate_calculator = CalculateCoords(self.gui_obj, self.rssi_data_obj)
         # Coordinate_Calulator_Thread = threading.Thread(target=self.coordinate_calculator.start)
-        Coordinate_Calulator_Thread = threading.Thread(target=self.coordinate_calculator.update_rssi_data_list)  # TODO
+        Coordinate_Calulator_Thread = threading.Thread(target=self.coordinate_calculator.update_rssi_data_list)  # TODO change target back to start
         self.threads.append(Coordinate_Calulator_Thread)
 
         # start threads
         for t in self.threads:
             t.start()
 
-        self.home_screen_obj.start()
+        self.gui_obj.start()
 
         # wait for threads to finish
         for t in self.threads:
