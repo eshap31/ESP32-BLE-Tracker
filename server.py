@@ -57,7 +57,7 @@ class Manager:
         # CalculateCoords
         self.coordinate_calculator = CalculateCoords(self.gui_obj, self.rssi_data_obj)
         # Coordinate_Calulator_Thread = threading.Thread(target=self.coordinate_calculator.start)
-        Coordinate_Calulator_Thread = threading.Thread(target=self.coordinate_calculator.update_rssi_data_list)  # TODO change target back to start
+        Coordinate_Calulator_Thread = threading.Thread(target=self.coordinate_calculator.start)  # TODO change target back to start
         self.threads.append(Coordinate_Calulator_Thread)
 
         # start threads

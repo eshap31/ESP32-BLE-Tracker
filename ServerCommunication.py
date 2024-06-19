@@ -9,7 +9,7 @@ class ServerCommunication:
     def __init__(self, peripheral_count, gui_object, rssi_data_obj):
         # socket
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # create the server socket
-        self.ip_addr = '10.96.17.84'
+        self.ip_addr = '172.16.1.118'
         self.port = 5005
         self.recv_size = 1000
 
@@ -117,7 +117,6 @@ class ServerCommunication:
         while not self.gui_object.server_ready:
             time.sleep(0.01)
         # initialize server socket
-        self.gui_object.coordinate_calculator_ready = True  # TODO delete
         self.server_socket.bind((self.ip_addr, self.port))
         print('server is ready to receive packets')
         self.communication()

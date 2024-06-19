@@ -184,7 +184,7 @@ class BleScanner:
 class Networking:
     def __init__(self, esp32_peripheral, rate):
         self.port = 5005
-        self.server_ip = '10.100.102.28'
+        self.server_ip = '172.16.1.118'
         self.server_tuple = (self.server_ip, self.port)
         self.client_socket = None
         self.mac_address = None

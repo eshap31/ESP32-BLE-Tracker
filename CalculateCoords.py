@@ -77,35 +77,37 @@ class CalculateCoords:
         print('trilaterating')
         A = 2 * (reference_points[1][0] - reference_points[0][0])
         B = 2 * (reference_points[1][1] - reference_points[0][1])
-        C = distances[0] ** 2 - distances[1] ** 2 - reference_points[0][0] ** 2 + reference_points[1][0] ** 2 - \
+        C = (distances[0]) ** 2 - (distances[1]) ** 2 - reference_points[0][0] ** 2 + reference_points[1][0] ** 2 - \
             reference_points[0][1] ** 2 + reference_points[1][1] ** 2
 
         D = 2 * (reference_points[2][0] - reference_points[1][0])
         E = 2 * (reference_points[2][1] - reference_points[1][1])
-        F = distances[1] ** 2 - distances[2] ** 2 - reference_points[1][0] ** 2 + reference_points[2][0] ** 2 - \
+        F = (distances[1]) ** 2 - (distances[2]) ** 2 - reference_points[1][0] ** 2 + reference_points[2][0] ** 2 - \
             reference_points[1][1] ** 2 + reference_points[2][1] ** 2
 
         x = (C * E - F * B) / (E * A - B * D)
         y = (C * D - A * F) / (B * D - A * E)
-        #print(f'distances are: {distances} :: reference points: {reference_points} :: coordinates are: {x, y}')
+        print(f'coordinates are: {x, y}')
         if x < self.gui_obj.canvas_width and y < self.gui_obj.canvas_height:
             print('plotting on screen')
-            self.gui_obj.update_central_position(x, y, 15, 'red')
+            self.gui_obj.draw_central(x, y)
 
     def update_rssi_data_list(self):
-        """  testing start """
-        while not self.gui_obj.coordinate_calculator_ready:
-            time.sleep(0.1)
-        self.gui_obj.ready_to_track()  # allow user to start tracking
-        """ testing end """
+        # """  testing start """
+        # while not self.gui_obj.coordinate_calculator_ready:
+        #     time.sleep(0.1)
+        # self.gui_obj.ready_to_track()  # allow user to start tracking
+        # """ testing end """
 
-        # while True:
-        #     time.sleep(self.rate)
-        #     back_lst = self.rssi_data_obj.Get_Back()
-        #     if len(back_lst.keys()) >= 3:
-        #         self.get_top_three_rssi(back_lst)
-        #     else:
-        #         continue
+        self.gui_obj.ready_to_track()
+
+        while True:
+            time.sleep(self.rate)
+            back_lst = self.rssi_data_obj.Get_Back()
+            if len(back_lst.keys()) >= 3:
+                self.get_top_three_rssi(back_lst)
+            else:
+                continue
 
     def start(self):
         while not self.gui_obj.coordinate_calculator_ready:

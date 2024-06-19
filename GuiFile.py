@@ -2,7 +2,7 @@ import time
 
 from customtkinter import *
 from PIL import Image
-from db_testing import DbManager
+from db_manager import DbManager
 import json
 
 
@@ -10,6 +10,7 @@ class Gui:
     def __init__(self, admin_username, admin_password, model_address):
         # user initialization
 
+        self.start_tracking_button = None
         self.enter_button = None
         self.change_screens_button = None
         self.password_entry = None
@@ -55,6 +56,9 @@ class Gui:
         self.canvas_width = None
         self.canvas_height = None
         self.central_circle_id = None  # holds the central device circle object
+
+        self.central_image = CTkImage(dark_image=Image.open('images/central.png'), size=(30,30))
+        self.central_label = None
 
         # info screen
         self.info_screen_dimensions = []  # size of the information screen
@@ -212,11 +216,14 @@ class Gui:
         self.destroy_home_screen()
         waiting_for_system_label = CTkLabel(self.root, text='Waiting for peripheral devices to connect\rand for the central device to start advertising...\r\nStart tracking when you are ready, and when system is ready.', text_color='white', font=('Helvetica', 20))
         self.user_ready = True
+        print('user in is true')
+        self.ready_to_track()
         waiting_for_system_label.pack(side='top', pady=75)
 
     def start(self):
         # initialize window
         self.root = CTk()
+        self.initialize_map()
         self.root.geometry('600x600')
         self.root.configure(fg_color='#051D41')
         self.root.title('Home Screen')
@@ -429,29 +436,35 @@ class Gui:
             r = 15  # set radius size
             self.draw_circle(x, y, r, 'white')
 
-    def draw_central(self, x, y, r, fill_color):
-        """
-        Draws or updates a circle on the canvas according to the parameters given.
-        """
-        if self.central_circle_id is None:
-            # Create the circle if it doesn't exist
-            self.central_circle_id = self.map_canvas.create_oval(x - r, y - r, x + r, y + r, width=2,
-                                                                 fill=fill_color)
-        else:
-            # Update the circle's coordinates if it exists
-            self.map_canvas.coords(self.central_circle_id, x - r, y - r, x + r, y + r)
-            self.map_canvas.itemconfig(self.central_circle_id, fill=fill_color)  # Update the color if needed
+    # def draw_central(self, x, y, r, fill_color):
+    #     """
+    #     Draws or updates a circle on the canvas according to the parameters given.
+    #     """
+    #     if self.central_circle_id is None:
+    #         # Create the circle if it doesn't exist
+    #         self.central_circle_id = self.map_canvas.create_oval(x - r, y - r, x + r, y + r, width=2,
+    #                                                              fill=fill_color)
+    #     else:
+    #         # Update the circle's coordinates if it exists
+    #         self.map_canvas.coords(self.central_circle_id, x - r, y - r, x + r, y + r)
+    #         self.map_canvas.itemconfig(self.central_circle_id, fill=fill_color)  # Update the color if needed
 
-    def update_central_position(self, x, y, r, fill_color):
-        self.map_canvas.after(0, self.draw_central, x, y, r, fill_color)
+    def draw_central(self, x, y):
+        if self.central_label is None:
+            self.central_label = CTkLabel(self.root, image=self.central_image)
+        self.central_label.place(x=x, y=y)
+
+    # def update_central_position(self, x, y, r, fill_color):
+    #     if self.user_ready:
+    #         self.map_canvas.after(0, self.draw_central, x, y, r, fill_color)
 
     def ready_to_track(self):
         while not self.user_ready:  # wait until user has logged in, and then display button
             time.sleep(0.01)
         print('ready_to_track')
-        button = CTkButton(self.root, text='Start', height=30, width=50, hover_color='#3a3a5e', fg_color='white',
+        self.start_tracking_button = CTkButton(self.root, text='Start', height=30, width=50, hover_color='#3a3a5e', fg_color='white',
                            text_color='black', command=self.tracking_initialize)
-        button.place(x=275, y=300)
+        self.start_tracking_button.place(x=275, y=300)
 
     def draw_info_screen(self):
         """
@@ -472,10 +485,13 @@ class Gui:
 
     def tracking_initialize(self):
         #destroy old window
+        self.start_tracking_button.destroy()
         self.root.destroy()
 
         # create tje mew window
         self.root = CTk()
+
+        self.root.iconbitmap('images/favicon.ico')
 
         # onboard model, and modify fit computer
         self.initialize_map()

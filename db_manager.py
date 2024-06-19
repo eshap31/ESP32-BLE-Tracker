@@ -140,20 +140,3 @@ class DbManager:
             return True
         else:
             return False
-
-    def run(self):
-        """
-        Runs a loop for user interaction: signup or login.
-        """
-        while True:
-            if not os.path.exists(self.file_path):
-                print("Admin login initialized. Please restart the program.")
-                break
-
-            choice = input("Do you want to (1) Signup or (2) Login? Enter 1 or 2: ")
-            if choice == '1':
-                self.signup()
-            elif choice == '2':
-                self.login()
-            else:
-                print("Invalid choice. Please enter 1 or 2.")
