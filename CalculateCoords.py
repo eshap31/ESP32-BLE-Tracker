@@ -11,8 +11,7 @@ class CalculateCoords:
         self.back_lst = None
 
         # trilateration
-        self.n = 3.5  # environment variable - play around with it
-        self.tx_power = -45  # one meter rssi of the solo
+        self.n = 2.5  # environment variable - play around with it
 
     def get_top_three_rssi(self, back_lst):
         """
@@ -20,10 +19,8 @@ class CalculateCoords:
         - gets the top three rssi's, and the beacon mac address that scanned
         - calls the calculate_distances function
         """
-        print(f'in top three rssi, back list {back_lst}')
         # TODO update the information screen, with values in back_lst
         top_three = []
-
         for key, val in back_lst.items():
             # add to list
             top_three.append((key, val))
@@ -53,10 +50,12 @@ class CalculateCoords:
         distances = []
         for t in rssi_list:
             # distance calculation
-            rssi = t[1]
-            distance = (10 ** ((self.tx_power - rssi) / (10 * self.n))) * self.gui_obj.ratio  # fit to map dimensions
-            # getting the coordinates of the peripheral device that made the scan
             mac_addr = t[0]
+            rssi = t[1]
+
+            tx_power = self.gui_obj.one_meter_rssi_dict[mac_addr]
+            distance = (10 ** ((tx_power - rssi) / (10 * self.n))) * self.gui_obj.ratio
+            # getting the coordinates of the peripheral device that made the scan
             peripheral_coordinates = self.get_coordinates(mac_addr)
             reference_points.append(peripheral_coordinates)
             distances.append(distance)
@@ -76,6 +75,8 @@ class CalculateCoords:
         """
         if self.gui_obj.can_display_central:
             print('trilaterating')
+            print(f'distances: {distances}')
+            print(f'reference points: {reference_points}')
             A = 2 * (reference_points[1][0] - reference_points[0][0])
             B = 2 * (reference_points[1][1] - reference_points[0][1])
             C = (distances[0]) ** 2 - (distances[1]) ** 2 - reference_points[0][0] ** 2 + reference_points[1][0] ** 2 - \
@@ -86,19 +87,18 @@ class CalculateCoords:
             F = (distances[1]) ** 2 - (distances[2]) ** 2 - reference_points[1][0] ** 2 + reference_points[2][0] ** 2 - \
                 reference_points[1][1] ** 2 + reference_points[2][1] ** 2
 
-            x = (C * E - F * B) / (E * A - B * D)
+            x = ((C * E - F * B) / (E * A - B * D))
             y = (C * D - A * F) / (B * D - A * E)
-            if self.gui_obj.canvas_width > x > 0 and 0 < y < self.gui_obj.canvas_height:
-                print(f'coordinates are: {x, y}')
-                self.gui_obj.draw_central(x, y)
+            print(f'real coords: {x, y}')
+            #new_x = self.gui_obj.ratio * x
+            #new_y = self.gui_obj.ratio * y
+            new_x = x
+            new_y = y
+            if self.gui_obj.canvas_width > new_x and new_y < self.gui_obj.canvas_height:
+                print(f'coordinates are: {new_x, new_y}')
+                self.gui_obj.draw_central(new_x, new_y, x, y)
 
     def update_rssi_data_list(self):
-        # """  testing start """
-        # while not self.gui_obj.coordinate_calculator_ready:
-        #     time.sleep(0.1)
-        # self.gui_obj.ready_to_track()  # allow user to start tracking
-        # """ testing end """
-
         self.gui_obj.ready_to_track()
 
         while True:

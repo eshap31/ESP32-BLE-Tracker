@@ -1,3 +1,4 @@
+import copy
 import time
 
 from customtkinter import *
@@ -10,6 +11,7 @@ class Gui:
     def __init__(self, admin_username, admin_password, model_address):
         # user initialization
 
+        # user initialization
         self.start_tracking_button = None
         self.enter_button = None
         self.change_screens_button = None
@@ -19,7 +21,6 @@ class Gui:
         self.login_label = None
 
         self.root = None
-
         self.login_button = None
         self.github_button = None
         self.signup_button = None
@@ -28,17 +29,12 @@ class Gui:
 
         self.placed_widgets = []  # list of temporary widgets that will be destroyed every time you move onto a new screen
         self.packed_widgets = []
-
         self.user_ready = False
 
         # DbManager
         self.db_manager = DbManager(admin_username, admin_password)
 
-        # ---------------------------------
-
         # tracking screen and model
-
-        # ready variables
         self.server_ready = False
         self.coordinate_calculator_ready = False
 
@@ -46,6 +42,8 @@ class Gui:
         self.model_address = model_address
         self.edges = []
         self.beacons = []
+        self.original_edges = []
+        self.original_beacons = []
         self.mac_list = []  # list of all the beacon's Wi-Fi mac address
         self.ratio = None
 
@@ -70,6 +68,8 @@ class Gui:
 
         # window
         self.window_dimensions = []
+
+        self.one_meter_rssi_dict = {}
 
     # user initialization  -------------------------------
     def create_buttons(self):
@@ -314,18 +314,15 @@ class Gui:
         - function changes the coordinates of the edges and beacons to fit the map, using the ratio
         """
         # using the ratio, create the new coordinates
-        new_edges = []
-        for edge in self.edges:
-            edge['start'] = [int(num * self.ratio) for num in edge['start']]
-            edge['end'] = [int(num * self.ratio) for num in edge['end']]
-            new_edges.append(edge)
-        self.edges = new_edges
+        self.edges = [
+        {'start': [int(num * self.ratio) for num in edge['start']], 'end': [int(num * self.ratio) for num in edge['end']]}
+        for edge in self.edges
+        ]
 
-        new_beacons = []
-        for beacon in self.beacons:
-            beacon['coordinates'] = [int(num * self.ratio) for num in beacon['coordinates']]
-            new_beacons.append(beacon)
-        self.beacons = new_beacons
+        self.beacons = [
+        {'coordinates': [int(num * self.ratio) for num in beacon['coordinates']], 'mac_address': beacon['mac_address']}
+        for beacon in self.beacons
+        ]
 
         # create resized_model.json file, using new_edges and new_beacons lists
         with open('resized_model.json', 'w') as file:
@@ -335,8 +332,13 @@ class Gui:
         # extract edges and beacons from model
         with open(self.model_address, 'r') as model:
             data = json.load(model)
-        self.edges = data['edges']
-        self.beacons = data['beacons']
+
+        self.original_edges = copy.deepcopy(data['edges'])
+        self.original_beacons = copy.deepcopy(data['beacons'])
+        self.edges = copy.deepcopy(data['edges'])
+        self.beacons = copy.deepcopy(data['beacons'])
+
+        print(self.original_beacons)
         self.mac_list = [beacon['mac_address'] for beacon in self.beacons]
         print(self.mac_list)
 
@@ -459,11 +461,12 @@ class Gui:
     #         self.map_canvas.coords(self.central_circle_id, x - r, y - r, x + r, y + r)
     #         self.map_canvas.itemconfig(self.central_circle_id, fill=fill_color)  # Update the color if needed
 
-    def draw_central(self, x, y):
+    def draw_central(self, x, y, realx, realy):
         if self.can_display_central:
             if self.central_label is None:
                 self.central_label = CTkLabel(self.root, image=self.central_image, fg_color='transparent', text='')
             self.central_label.place(x=x, y=y)
+
 
     # def update_central_position(self, x, y, r, fill_color):
     #     if self.user_ready:

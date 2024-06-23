@@ -9,7 +9,7 @@ import sys
 import gc
 import ubinascii
 
-# mac adress  - 30:30:F9:77:06:0C
+# mac adress  - 30:30:F9:77:0A:D0
 
 """
     This is a client script is part of a client server dialogue, where the client is the esp32, and the server is a computer running python.
@@ -17,6 +17,7 @@ import ubinascii
     - esp32 connects to desired network (should be the same network that the computer (server) is connected to)
     - esp32 connects to the server, using sockets, and sends a hello message
 """
+
 
 class Protocol:
     BUFFER_SIZE = 1000
@@ -26,6 +27,7 @@ class Protocol:
         """
         Create a valid protocol message, with length field
         """
+        data = str(data)
         return data.encode()
 
     @staticmethod
@@ -127,6 +129,10 @@ class BleScanner:
         self.back = 1  # index of the second most up to date dictionary in the self.devs dictionary
         self.ttl = 4
         
+        self.avg = 0
+        
+        self.central_mac = '1C:9D:C2:35:A8:52'
+        
     def Get_Back(self):
         back_dict = self.devs[self.back]
         self._Swap_Curr()
@@ -176,6 +182,31 @@ class BleScanner:
                 return
             except:
                 print('stopped')
+                
+    def calc_d(self, rssi):
+        return 10 ** ((-45 - rssi) / (10 * 3.5))
+                
+    def scan(self, event, data):
+        if event == self._IRQ_SCAN_RESULT:
+            addr_type, addr, connectable, rssi, adv_data = data
+            mac_addr = ':'.join(['%02X' % i for i in addr])
+            if mac_addr == self.central_mac:
+                distance = self.calc_d(rssi)
+                self.avg = (self.avg + distance) / 2
+                
+        elif event == self._IRQ_SCAN_DONE:
+            try:
+                print('done scanning')
+            except:
+                return
+        
+                
+    def scan_for_calibration(self):
+        bt_test = bluetooth.BLE()
+        bt_test.irq(self.scan)
+        bt_test.active(True)
+        bt_test.gap_scan(30000, 10000, 5)
+        
         
     def start(self): 
         self.bt.irq(self.bt_irq)
@@ -183,7 +214,7 @@ class BleScanner:
         print("BLE Active:", self.bt.active())
         print('starting scan...')
         self.bt.gap_scan(self.ms_scan, 10000, 5)
-        time.sleep_ms(self.ms_scan)
+        time.sleep(self.ms_scan)
         
 
 class Networking:
@@ -257,14 +288,18 @@ class Networking:
         self.mac_address = mac_address
         
         #print('free memory: {gc.mem_free()}')
-        # UDP socket setup
+        self.scanner.scan_for_calibration()
+        time.sleep(30)
+        print(f'one meter rssi: {self.scanner.avg}')
+        
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         #print(f'sending: {self.mac_address} as verification field')
-        verif = Protocol.create_msg(self.mac_address) # create packet
+        #verif = ujson.dumps([self.mac_address, self.scanner.avg]) # create packet
+        verif = ujson.dumps([self.mac_address, self.scanner.avg]) # create packet
         self.client_socket.sendto(verif, self.server_tuple)  # send the mac address
         print('sent mac address')
         data = Protocol.get_msg(self.client_socket)
-        if data[0]:  # if the server sent 'start'
+        if data[0]:  # if the server sent 'start', meaning the device has been authenticated
             self.stop = False  # the server has sent permission to start
             print('moving on to the scanning and sending fase')
             _thread.start_new_thread(self.scanner.start, ())  # start the scanner from here, and create a seperate thread for it
@@ -307,4 +342,4 @@ def main():
     coordinator.start()
     
 
-main()
+main() 
