@@ -74,23 +74,23 @@ class CalculateCoords:
         Returns:
         - Tuple (x, y): Estimated coordinates of the central device...
         """
-        print('trilaterating')
-        A = 2 * (reference_points[1][0] - reference_points[0][0])
-        B = 2 * (reference_points[1][1] - reference_points[0][1])
-        C = (distances[0]) ** 2 - (distances[1]) ** 2 - reference_points[0][0] ** 2 + reference_points[1][0] ** 2 - \
-            reference_points[0][1] ** 2 + reference_points[1][1] ** 2
+        if self.gui_obj.can_display_central:
+            print('trilaterating')
+            A = 2 * (reference_points[1][0] - reference_points[0][0])
+            B = 2 * (reference_points[1][1] - reference_points[0][1])
+            C = (distances[0]) ** 2 - (distances[1]) ** 2 - reference_points[0][0] ** 2 + reference_points[1][0] ** 2 - \
+                reference_points[0][1] ** 2 + reference_points[1][1] ** 2
 
-        D = 2 * (reference_points[2][0] - reference_points[1][0])
-        E = 2 * (reference_points[2][1] - reference_points[1][1])
-        F = (distances[1]) ** 2 - (distances[2]) ** 2 - reference_points[1][0] ** 2 + reference_points[2][0] ** 2 - \
-            reference_points[1][1] ** 2 + reference_points[2][1] ** 2
+            D = 2 * (reference_points[2][0] - reference_points[1][0])
+            E = 2 * (reference_points[2][1] - reference_points[1][1])
+            F = (distances[1]) ** 2 - (distances[2]) ** 2 - reference_points[1][0] ** 2 + reference_points[2][0] ** 2 - \
+                reference_points[1][1] ** 2 + reference_points[2][1] ** 2
 
-        x = (C * E - F * B) / (E * A - B * D)
-        y = (C * D - A * F) / (B * D - A * E)
-        print(f'coordinates are: {x, y}')
-        if x < self.gui_obj.canvas_width and y < self.gui_obj.canvas_height:
-            print('plotting on screen')
-            self.gui_obj.draw_central(x, y)
+            x = (C * E - F * B) / (E * A - B * D)
+            y = (C * D - A * F) / (B * D - A * E)
+            if self.gui_obj.canvas_width > x > 0 and 0 < y < self.gui_obj.canvas_height:
+                print(f'coordinates are: {x, y}')
+                self.gui_obj.draw_central(x, y)
 
     def update_rssi_data_list(self):
         # """  testing start """

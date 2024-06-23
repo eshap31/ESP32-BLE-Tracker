@@ -57,13 +57,16 @@ class Gui:
         self.canvas_height = None
         self.central_circle_id = None  # holds the central device circle object
 
-        self.central_image = CTkImage(dark_image=Image.open('images/central.png'), size=(30,30))
+        self.central_image = CTkImage(dark_image=Image.open('images/central.png'), size=(30, 30))
         self.central_label = None
+        self.can_display_central = False
 
         # info screen
         self.info_screen_dimensions = []  # size of the information screen
         self.info_screen_coordinates = {}  # coordinates that represent where the information screen is located
         self.info_screen_canvas = None  # this is where I will create the information screen
+
+        self.logout_button = None
 
         # window
         self.window_dimensions = []
@@ -174,7 +177,9 @@ class Gui:
             self.username_entry.configure(placeholder_text='Username')
             self.password_entry.configure(placeholder_text='Password')
             self.signup_label.configure(text='Choose a username and a password', text_color='white')
-            self.enter_button.configure(text='Create account', width=90, command=lambda: self.check_created_user(self.username_entry.get(), self.password_entry.get()))
+            self.enter_button.configure(text='Create account', width=90,
+                                        command=lambda: self.check_created_user(self.username_entry.get(),
+                                                                                self.password_entry.get()))
 
             self.placed_widgets.extend(
                 [self.username_entry, self.password_entry, self.enter_button, self.change_screens_button])
@@ -187,7 +192,8 @@ class Gui:
             self.change_screens_button.place(x=200, y=330)
 
     def check_created_user(self, username, password):  # checks if the username that the admin put in is available
-        status = self.db_manager.create_account(username, password)  # try to create the account with the inputted credentials
+        status = self.db_manager.create_account(username,
+                                                password)  # try to create the account with the inputted credentials
         if not status:
             self.signup_label.pack_forget()
             self.packed_widgets = []
@@ -214,11 +220,15 @@ class Gui:
 
     def user_in(self):
         self.destroy_home_screen()
-        waiting_for_system_label = CTkLabel(self.root, text='Waiting for peripheral devices to connect\rand for the central device to start advertising...\r\nStart tracking when you are ready, and when system is ready.', text_color='white', font=('Helvetica', 20))
+        waiting_for_system_label = CTkLabel(self.root,
+                                            text='Waiting for peripheral devices to connect\rand for the central device to start advertising...\r\nStart tracking when you are ready, and when system is ready.',
+                                            text_color='white', font=('Helvetica', 20))
+        self.logout_button = CTkButton(self.root, text='Log out', width=50, hover_color='#3a3a5e', fg_color='white', text_color='black')
+
         self.user_ready = True
         print('user in is true')
-        self.ready_to_track()
         waiting_for_system_label.pack(side='top', pady=75)
+        self.logout_button.place(x=20, y=10)
 
     def start(self):
         # initialize window
@@ -433,7 +443,7 @@ class Gui:
         """
         for beacon in self.beacons:
             x, y = beacon['coordinates'][0], beacon['coordinates'][1]
-            r = 15  # set radius size
+            r = 8  # set radius size
             self.draw_circle(x, y, r, 'white')
 
     # def draw_central(self, x, y, r, fill_color):
@@ -450,9 +460,10 @@ class Gui:
     #         self.map_canvas.itemconfig(self.central_circle_id, fill=fill_color)  # Update the color if needed
 
     def draw_central(self, x, y):
-        if self.central_label is None:
-            self.central_label = CTkLabel(self.root, image=self.central_image)
-        self.central_label.place(x=x, y=y)
+        if self.can_display_central:
+            if self.central_label is None:
+                self.central_label = CTkLabel(self.root, image=self.central_image, fg_color='transparent', text='')
+            self.central_label.place(x=x, y=y)
 
     # def update_central_position(self, x, y, r, fill_color):
     #     if self.user_ready:
@@ -462,8 +473,9 @@ class Gui:
         while not self.user_ready:  # wait until user has logged in, and then display button
             time.sleep(0.01)
         print('ready_to_track')
-        self.start_tracking_button = CTkButton(self.root, text='Start', height=30, width=50, hover_color='#3a3a5e', fg_color='white',
-                           text_color='black', command=self.tracking_initialize)
+        self.start_tracking_button = CTkButton(self.root, text='Start', height=30, width=50, hover_color='#3a3a5e',
+                                               fg_color='white',
+                                               text_color='black', command=self.tracking_initialize)
         self.start_tracking_button.place(x=275, y=300)
 
     def draw_info_screen(self):
@@ -472,8 +484,10 @@ class Gui:
         """
         # TODO work on the information screen graphics
         label = CTkLabel(self.info_screen_canvas, text='Info Screen', font=('Helvetica', 20), width=100)
+        coordinate_label = CTkLabel(self.info_screen_canvas, text='Central Device Coordinates:', font=('Helvetica', 16))
+
         label.place(x=180, y=40)
-        scroll_frame = CTkScrollableFrame
+        coordinate_label.place(x=50, y=180)
 
     def create_window(self):
         self.calculate_window_dimensions()
@@ -484,7 +498,7 @@ class Gui:
         self.draw_info_screen()
 
     def tracking_initialize(self):
-        #destroy old window
+        # destroy old window
         self.start_tracking_button.destroy()
         self.root.destroy()
 
@@ -499,6 +513,7 @@ class Gui:
         # create window - place beacons, edges, and add divider between map and info screens
         self.create_window()
 
+        self.can_display_central = True
+
         # test it out
         self.root.mainloop()
-

@@ -1,3 +1,4 @@
+import json
 import socket
 import time
 
@@ -9,8 +10,14 @@ class ServerCommunication:
     def __init__(self, peripheral_count, gui_object, rssi_data_obj):
         # socket
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # create the server socket
-        self.ip_addr = '172.16.1.118'
-        self.port = 5005
+
+        # open config file
+        with open('config.json', 'r') as f:
+            file_content = f.read()
+            config = json.loads(file_content)
+
+        self.ip_addr = config['server_ip']
+        self.port = config['server_port']
         self.recv_size = 1000
 
         # Data structures

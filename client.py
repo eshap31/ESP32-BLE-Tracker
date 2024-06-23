@@ -9,6 +9,8 @@ import sys
 import gc
 import ubinascii
 
+# mac adress  - 30:30:F9:77:06:0C
+
 """
     This is a client script is part of a client server dialogue, where the client is the esp32, and the server is a computer running python.
     What goes on in the script:
@@ -123,7 +125,7 @@ class BleScanner:
         self.devs = [{}, {}]  # list of two dictionaries that hold data about devices
         self.curr = 0  # index of the most updated dictionary of the two in the self.devs list
         self.back = 1  # index of the second most up to date dictionary in the self.devs dictionary
-        self.ttl = 5
+        self.ttl = 4
         
     def Get_Back(self):
         back_dict = self.devs[self.back]
@@ -134,6 +136,14 @@ class BleScanner:
         self.back = self.curr
         self.curr = (self.curr + 1) % 2
         
+    def sort_curr(self):
+        for key, value in self.devs[self.curr].items():
+            if value[1] == 0:
+                self.devs[self.curr].pop(key)
+            else:
+                value[1] -= 1
+        
+        
     def bt_irq(self, event, data,alpha=0.1): # called when ble event occures
         """ update self.devs[self.curr] dictionary """
         if event == self._IRQ_SCAN_RESULT:
@@ -141,22 +151,16 @@ class BleScanner:
             addr_type, addr, connectable, rssi, adv_data = data
             decoded_address = ':'.join(['%02X' % i for i in addr])
             
-            # Do the EMA filter on the rssi - alpha = 0.1
-            filtered_rssi = alpha * rssi + (1 - alpha) * rssi
             
-            # check if the device was already picked up
+            # check if the device hasn't already been picked up
             if self.devs[self.curr].get(decoded_address) is None:  # new device
-                self.devs[self.curr][decoded_address] = (filtered_rssi, self.ttl)  # update the curr dictionary
+                filtered_rssi = rssi
             
             else:  # device already been picked up
-                ttl = self.devs[self.curr][decoded_address][1]
-                # TODO call function that checks the entire dictionary, and if the device wasnt picked up, take 1 of the ttl, if it was picked up, refresh ttl to 5
-                # whatever device that its ttl is not five, decrease 1 from the ttl
-                if ttl == 0:  # take out of the dictionary
-                    self.devs[self.curr].pop(decoded_address)  # remove device from dictionary, because ttl got to 0
-                else:
-                    ttl -= 1
-                    self.devs[self.curr][decoded_address] = (filtered_rssi, ttl)  # update the curr dictionary, add check ttl
+                past_rssi = self.devs[self.curr][decoded_address][0]
+                filtered_rssi = alpha * rssi + (1-alpha) * past_rssi
+            
+            self.devs[self.curr][decoded_address] = [filtered_rssi, self.ttl]  # update the curr dictionary
                 
                 
         elif event == self._IRQ_SCAN_DONE:
@@ -164,6 +168,7 @@ class BleScanner:
                 when scan is completed, start a new one
             """
             # Scan duration finished or manually stopped.
+            #self.sort_curr()
             try:
                 self.bt.gap_scan(self.ms_scan, 10000, 5)  # start a new scan
             except KeyboardInterrupt:  # in case server was stopped manually
@@ -200,7 +205,7 @@ class Networking:
             time.sleep(0.1)
             try:
                 data, addr = self.client_socket.recvfrom(1024)
-                print('----')
+                #print('----')
                 data = data.decode()
             except OSError as e:
                 if e.errno == errno.ECONNABORTED:
@@ -226,29 +231,32 @@ class Networking:
                     continue
             print('getting back')
             back = self.scanner.Get_Back()
+            self.scanner.sort_curr()
             if back == {}:
                 print('empty')
                 continue
+            else:
+                if '1C:9D:C2:35:A8:52' in back.keys():
+                    print(back['1C:9D:C2:35:A8:52'][0])
             data = Protocol.create_serialized_data(back)
             print('got data')
-            sum = 0
             try:
                 for d in data:
-                    print('*****')
+                    #print('*****')
                     self.client_socket.sendto(d, self.server_tuple)
-                    print('----')
+                    #print('----')
             except OSError as e:
                 if e.errno == errno.ECONNABORTED:
                     print(f'error with sending data: {e}')
                 else:
                     print(f'found a different error: {e}')
-            print(f'free memory: {gc.mem_free()} bytes')
+            #print(f'free memory: {gc.mem_free()} bytes')
             # free garbage collector
 
     def start(self, mac_address):
         self.mac_address = mac_address
         
-        print('free memory: {gc.mem_free()}')
+        #print('free memory: {gc.mem_free()}')
         # UDP socket setup
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         #print(f'sending: {self.mac_address} as verification field')
@@ -276,10 +284,10 @@ class CoordinatorClass:  # main class, that manages everything
         
     def start(self):
         #wifi info
-        #self.ssid = 'Adassim'
-        #self.password = '20406080'
-        self.ssid = 'Needham'
-        self.password = 'gr2Hoyer'
+        self.ssid = 'Adassim'
+        self.password = '20406080'
+        #self.ssid = 'Needham'
+        #self.password = 'gr2Hoyer'
 
         #BleScanner class
         ms_scan = 10000  # (ms) - Scan for 10s (at 100% duty cycle)

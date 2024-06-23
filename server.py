@@ -5,6 +5,8 @@ from ServerCommunication import ServerCommunication
 from CalculateCoords import CalculateCoords
 from GuiFile import Gui
 
+import json
+
 """
 Central device bluetooth mac address:
 - 1C:9D:C2:35:A8:52 - solo 1
@@ -39,10 +41,17 @@ class Manager:
         self.threads = []
 
     def start(self):
+        # open config file
+        with open('config.json', 'r') as f:
+            file_content = f.read()
+            config = json.loads(file_content)
+
         # 1. GuiManager
-        self.model_address = 'Models/eitams_room_model.json'
-        self.admin_username = 'admin'
-        self.admin_password = 'adminpass'
+        self.model_address = config['model_address']
+        self.admin_username = config['admin_username']
+        self.admin_password = config['admin_pass']
+        f.close()
+
         self.gui_obj = Gui(self.admin_username, self.admin_password, self.model_address)
 
         # RssiData
