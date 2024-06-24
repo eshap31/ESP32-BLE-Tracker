@@ -52,13 +52,13 @@ class ServerCommunication:
             print(response[1][0])
             if response[1][0] in self.gui_object.mac_list:
                 # TODO Make sure that the same mac address isn't already connected, and add the mac address to peripheral devices list/dictionary
-                print(f'authenticated {ip_addr}, mac address is {response[1][1]}')
+                print(f'authenticated {ip_addr}, mac address is {response[1][0]}')
                 self.gui_object.one_meter_rssi_dict[response[1][0]] = response[1][1]
                 print(f'one meter rssi is: {response[1][1]}')
                 # handle lists and dictionaries
+                self.connected_peripherals += 1
                 self.verification_list.remove(ip_addr)
                 self.peripheral_devices[ip_addr] = response[1][0]
-                self.connected_peripherals += 1
                 # send start message
                 self.server_socket.sendto(Protocol.create_msg('start'), ip_addr)
             else:  # if socket is not a peripheral device
@@ -69,6 +69,7 @@ class ServerCommunication:
 
     def handle_peripheral_communication(self, data, ip_addr):
         print(f'getting data from peripheral device, {ip_addr} and checking')
+
         response = Protocol.get_serialized_data(data)  # receive data from socket
         if response[0]:
             #print(f'got data from {ip_addr}\n{response[1]}\n')

@@ -12,6 +12,7 @@ class Gui:
         # user initialization
 
         # user initialization
+        self.coordinates_label = None
         self.start_tracking_button = None
         self.enter_button = None
         self.change_screens_button = None
@@ -64,7 +65,6 @@ class Gui:
         self.info_screen_coordinates = {}  # coordinates that represent where the information screen is located
         self.info_screen_canvas = None  # this is where I will create the information screen
 
-        self.logout_button = None
 
         # window
         self.window_dimensions = []
@@ -223,12 +223,10 @@ class Gui:
         waiting_for_system_label = CTkLabel(self.root,
                                             text='Waiting for peripheral devices to connect\rand for the central device to start advertising...\r\nStart tracking when you are ready, and when system is ready.',
                                             text_color='white', font=('Helvetica', 20))
-        self.logout_button = CTkButton(self.root, text='Log out', width=50, hover_color='#3a3a5e', fg_color='white', text_color='black')
 
         self.user_ready = True
         print('user in is true')
         waiting_for_system_label.pack(side='top', pady=75)
-        self.logout_button.place(x=20, y=10)
 
     def start(self):
         # initialize window
@@ -443,34 +441,19 @@ class Gui:
         - draw the beacons on the screen as circles
         - beacons are initially white, and only the 3 closest beacons to the central device will be in red
         """
+        i = 0
         for beacon in self.beacons:
             x, y = beacon['coordinates'][0], beacon['coordinates'][1]
             r = 8  # set radius size
             self.draw_circle(x, y, r, 'white')
 
-    # def draw_central(self, x, y, r, fill_color):
-    #     """
-    #     Draws or updates a circle on the canvas according to the parameters given.
-    #     """
-    #     if self.central_circle_id is None:
-    #         # Create the circle if it doesn't exist
-    #         self.central_circle_id = self.map_canvas.create_oval(x - r, y - r, x + r, y + r, width=2,
-    #                                                              fill=fill_color)
-    #     else:
-    #         # Update the circle's coordinates if it exists
-    #         self.map_canvas.coords(self.central_circle_id, x - r, y - r, x + r, y + r)
-    #         self.map_canvas.itemconfig(self.central_circle_id, fill=fill_color)  # Update the color if needed
-
     def draw_central(self, x, y, realx, realy):
         if self.can_display_central:
             if self.central_label is None:
-                self.central_label = CTkLabel(self.root, image=self.central_image, fg_color='transparent', text='')
+                self.central_label = CTkLabel(self.map_canvas, image=self.central_image, fg_color='transparent', text='')
+            self.coordinates_label = CTkLabel(self.info_screen_canvas, text=f'({realx}, {realy})')
+            self.coordinates_label.place(x=80, y=230)  # TODO place coordinates label
             self.central_label.place(x=x, y=y)
-
-
-    # def update_central_position(self, x, y, r, fill_color):
-    #     if self.user_ready:
-    #         self.map_canvas.after(0, self.draw_central, x, y, r, fill_color)
 
     def ready_to_track(self):
         while not self.user_ready:  # wait until user has logged in, and then display button
@@ -510,13 +493,13 @@ class Gui:
 
         self.root.iconbitmap('images/favicon.ico')
 
+        self.can_display_central = True
+
         # onboard model, and modify fit computer
         self.initialize_map()
 
         # create window - place beacons, edges, and add divider between map and info screens
         self.create_window()
-
-        self.can_display_central = True
 
         # test it out
         self.root.mainloop()

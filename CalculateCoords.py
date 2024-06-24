@@ -1,3 +1,4 @@
+import math
 import time
 
 
@@ -30,15 +31,36 @@ class CalculateCoords:
             if len(top_three) > 3:
                 top_three.pop()
 
+        print('in top three rssi')
+
         self.calculate_distances(top_three)
 
     def get_coordinates(self, mac_addr):
         """
         - returns the coordinates for the peripheral device with the certain mac address
         """
-        for beacon in self.gui_obj.beacons:
+        #for beacon in self.gui_obj.beacons:
+        for beacon in self.gui_obj.original_beacons:
             if beacon['mac_address'] == mac_addr:
                 return beacon['coordinates']
+
+    def rssi_to_distance(self, rssi_, tx_power, n=2):
+        """
+        Estimate distance from RSSI value.
+
+        :param rssi_: Received Signal Strength Indicator (RSSI) in dBm
+        :param tx_power: Measured RSSI at 1 meter distance, typically -59 dBm for BLE
+        :param n: Path-loss exponent (n=2 in free space, typically ranges from 2 to 4 in indoor environments)
+        :return: Estimated distance in meters
+        """
+        if rssi_ == 0:
+            return -1.0  # if we cannot determine the distance
+
+        ratio = rssi_ * 1.0 / tx_power
+        if ratio < 1.0:
+            return math.pow(ratio, 10)
+        else:
+            return (0.89976) * math.pow(ratio, 7.7095) + 0.111
 
     def calculate_distances(self, rssi_list):
         """
@@ -54,7 +76,9 @@ class CalculateCoords:
             rssi = t[1]
 
             tx_power = self.gui_obj.one_meter_rssi_dict[mac_addr]
-            distance = (10 ** ((tx_power - rssi) / (10 * self.n))) * self.gui_obj.ratio
+            #distance = (10 ** ((tx_power - rssi) / (10 * self.n))) * self.gui_obj.ratio
+            distance = (10 ** ((tx_power - rssi) / (10 * self.n)))  # real life distance
+            distance = self.rssi_to_distance(rssi, tx_power)
             # getting the coordinates of the peripheral device that made the scan
             peripheral_coordinates = self.get_coordinates(mac_addr)
             reference_points.append(peripheral_coordinates)
@@ -90,11 +114,12 @@ class CalculateCoords:
             x = ((C * E - F * B) / (E * A - B * D))
             y = (C * D - A * F) / (B * D - A * E)
             print(f'real coords: {x, y}')
-            #new_x = self.gui_obj.ratio * x
-            #new_y = self.gui_obj.ratio * y
-            new_x = x
-            new_y = y
-            if self.gui_obj.canvas_width > new_x and new_y < self.gui_obj.canvas_height:
+            print(f'distance: {distances} reference points: {reference_points}')
+            new_x = self.gui_obj.ratio * x
+            new_y = self.gui_obj.ratio * y
+            # new_x = x
+            # new_y = y
+            if self.gui_obj.canvas_width > new_x > 0 and 0 < new_y < self.gui_obj.canvas_height:
                 print(f'coordinates are: {new_x, new_y}')
                 self.gui_obj.draw_central(new_x, new_y, x, y)
 
@@ -102,6 +127,7 @@ class CalculateCoords:
         self.gui_obj.ready_to_track()
 
         while True:
+            print('updating')
             time.sleep(self.rate)
             back_lst = self.rssi_data_obj.Get_Back()
             if len(back_lst.keys()) >= 3:
